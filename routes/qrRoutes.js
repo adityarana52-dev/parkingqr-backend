@@ -2,6 +2,48 @@ const express = require("express");
 const router = express.Router();
 const QrCode = require("../models/QrCode");
 const Showroom = require("../models/Showroom");
+const User = require("../models/User");
+const protect = require("../middleware/authMiddleware"); // agar already use ho raha hai
+
+
+// ✅ Activate QR (Customer assigns to vehicle)
+router.post("/activate", protect, async (req, res) => {
+  try {
+    const { qrId, vehicleNumber } = req.body;
+
+    if (!qrId || !vehicleNumber) {
+      return res.status(400).json({ message: "QR ID and vehicle number required" });
+    }
+
+    const qr = await QrCode.findOne({ qrId });
+
+    if (!qr) {
+      return res.status(404).json({ message: "QR not found" });
+    }
+
+    if (qr.isAssigned) {
+      return res.status(400).json({ message: "QR already activated" });
+    }
+
+    // Assign QR
+    qr.isAssigned = true;
+    qr.assignedTo = req.user._id;
+    qr.vehicleNumber = vehicleNumber;
+
+    await qr.save();
+
+    res.json({
+      message: "QR activated successfully",
+      qrId: qr.qrId,
+      vehicleNumber: qr.vehicleNumber,
+    });
+
+  } catch (error) {
+    console.log("QR Activation Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 
 
 // ✅ Generate QR codes (Temporary Admin Use)
@@ -69,6 +111,44 @@ router.post("/allocate", async (req, res) => {
 
   } catch (error) {
     console.log("Allocate QR Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// ✅ Activate QR (Customer assigns to vehicle)
+router.post("/activate", protect, async (req, res) => {
+  try {
+    const { qrId, vehicleNumber } = req.body;
+
+    if (!qrId || !vehicleNumber) {
+      return res.status(400).json({ message: "QR ID and vehicle number required" });
+    }
+
+    const qr = await QrCode.findOne({ qrId });
+
+    if (!qr) {
+      return res.status(404).json({ message: "QR not found" });
+    }
+
+    if (qr.isAssigned) {
+      return res.status(400).json({ message: "QR already activated" });
+    }
+
+    // Assign QR
+    qr.isAssigned = true;
+    qr.assignedTo = req.user._id;
+    qr.vehicleNumber = vehicleNumber;
+
+    await qr.save();
+
+    res.json({
+      message: "QR activated successfully",
+      qrId: qr.qrId,
+      vehicleNumber: qr.vehicleNumber,
+    });
+
+  } catch (error) {
+    console.log("QR Activation Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
