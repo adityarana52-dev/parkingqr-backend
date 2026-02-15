@@ -7,6 +7,11 @@ const qrCodeSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    showroom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Showroom",
+      default: null,
+    },
     isAssigned: {
       type: Boolean,
       default: false,
