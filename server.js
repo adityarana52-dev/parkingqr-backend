@@ -1,4 +1,5 @@
 
+const showroomRoutes = require("./routes/showroomRoutes");
 const express = require("express");
 const cors = require("cors");
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/showrooms", showroomRoutes);
 
 app.get("/", (req, res) => {
   res.send("ParkingQR API Running...");
