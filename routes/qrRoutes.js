@@ -77,7 +77,7 @@ router.post("/allocate", async (req, res) => {
 });
 
 // ✅ Activate QR (Customer assigns to vehicle)
-router.post("/activate", protect, async (req, res) => {
+router.post("/activate", async (req, res) => {
   try {
     const { qrId, vehicleNumber } = req.body;
 
