@@ -115,6 +115,7 @@ router.post("/activate", protect, async (req, res) => {
 });
 
 // ✅ Public QR View (No Login Required)
+// ✅ Public QR View (Secure – Number Masked)
 router.get("/public/:qrId", async (req, res) => {
   try {
     const { qrId } = req.params;
@@ -131,15 +132,53 @@ router.get("/public/:qrId", async (req, res) => {
       return res.status(400).send("<h2>QR Not Activated Yet</h2>");
     }
 
-    // Basic HTML response
+    // Mask mobile number
+    const mobile = qr.assignedTo.mobile;
+    const masked =
+      mobile.slice(0, 2) +
+      "XXXXXX" +
+      mobile.slice(-2);
+
     res.send(`
       <html>
         <head>
           <title>Vehicle Contact</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <style>
-            body { font-family: Arial; text-align: center; padding: 40px; }
-            .card { border: 1px solid #ddd; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
-            button { padding: 10px 20px; font-size: 16px; margin-top: 15px; }
+            body {
+              font-family: Arial, sans-serif;
+              text-align: center;
+              padding: 30px;
+              background-color: #f7f7f7;
+            }
+            .card {
+              background: white;
+              padding: 20px;
+              border-radius: 12px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              max-width: 400px;
+              margin: auto;
+            }
+            h2 {
+              margin-bottom: 20px;
+            }
+            p {
+              font-size: 16px;
+              margin: 10px 0;
+            }
+            button {
+              padding: 12px 20px;
+              font-size: 16px;
+              border: none;
+              border-radius: 8px;
+              background-color: #111;
+              color: white;
+              margin-top: 15px;
+              cursor: pointer;
+            }
+            button:hover {
+              background-color: #333;
+            }
           </style>
         </head>
         <body>
@@ -147,10 +186,11 @@ router.get("/public/:qrId", async (req, res) => {
             <h2>🚗 Vehicle Details</h2>
             <p><strong>Vehicle Number:</strong> ${qr.vehicleNumber}</p>
             <p><strong>Showroom:</strong> ${qr.showroom?.name || "N/A"}</p>
+            <p><strong>Owner Contact:</strong> ${masked}</p>
 
-            <a href="tel:${qr.assignedTo.mobile}">
-              <button>📞 Call Owner</button>
-            </a>
+            <p style="margin-top:15px; font-size:14px;">
+              Please contact politely if vehicle needs to be moved.
+            </p>
           </div>
         </body>
       </html>
@@ -161,6 +201,7 @@ router.get("/public/:qrId", async (req, res) => {
     res.status(500).send("<h2>Server Error</h2>");
   }
 });
+
 
 
 
