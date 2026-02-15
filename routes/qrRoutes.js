@@ -4,6 +4,36 @@ const QrCode = require("../models/QrCode");
 const Showroom = require("../models/Showroom");
 
 
+// ✅ Generate QR codes (Temporary Admin Use)
+router.post("/generate", async (req, res) => {
+  try {
+    const { count } = req.body;
+
+    if (!count) {
+      return res.status(400).json({ message: "Count required" });
+    }
+
+    const qrList = [];
+
+    for (let i = 1; i <= count; i++) {
+      const qrId = `QR${Date.now()}${i}`;
+
+      qrList.push({
+        qrId,
+      });
+    }
+
+    await QrCode.insertMany(qrList);
+
+    res.json({ message: `${count} QR codes generated successfully` });
+
+  } catch (error) {
+    console.log("Generate QR Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+
 // ✅ Allocate QR codes to showroom
 router.post("/allocate", async (req, res) => {
   try {
@@ -13,13 +43,11 @@ router.post("/allocate", async (req, res) => {
       return res.status(400).json({ message: "Showroom ID and quantity required" });
     }
 
-    // Check showroom exists
     const showroom = await Showroom.findById(showroomId);
     if (!showroom) {
       return res.status(404).json({ message: "Showroom not found" });
     }
 
-    // Find unassigned QRs
     const availableQrs = await QrCode.find({
       showroom: null,
     }).limit(quantity);
@@ -28,7 +56,6 @@ router.post("/allocate", async (req, res) => {
       return res.status(400).json({ message: "Not enough QR codes available" });
     }
 
-    // Assign QRs
     const qrIds = availableQrs.map((qr) => qr._id);
 
     await QrCode.updateMany(
@@ -41,7 +68,8 @@ router.post("/allocate", async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.log("Allocate QR Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
