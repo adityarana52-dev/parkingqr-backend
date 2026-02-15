@@ -79,14 +79,18 @@ router.post("/allocate", async (req, res) => {
 });
 
 // ✅ Activate QR (Customer assigns to vehicle)
+// ✅ Activate QR (1 Subscription = 1 Active QR)
 router.post("/activate", protect, async (req, res) => {
   try {
     const { qrId, vehicleNumber } = req.body;
 
     if (!qrId || !vehicleNumber) {
-      return res.status(400).json({ message: "QR ID and vehicle number required" });
+      return res.status(400).json({
+        message: "QR ID and vehicle number required",
+      });
     }
 
+    // Find QR
     const qr = await QrCode.findOne({ qrId });
 
     if (!qr) {
@@ -95,6 +99,19 @@ router.post("/activate", protect, async (req, res) => {
 
     if (qr.isAssigned) {
       return res.status(400).json({ message: "QR already activated" });
+    }
+
+    // 🔥 NEW BUSINESS RULE
+    // Check if user already has an active QR
+    const existingQr = await QrCode.findOne({
+      assignedTo: req.user._id,
+      isAssigned: true,
+    });
+
+    if (existingQr) {
+      return res.status(400).json({
+        message: "Subscription allows only 1 active vehicle",
+      });
     }
 
     // Assign QR
@@ -112,9 +129,13 @@ router.post("/activate", protect, async (req, res) => {
 
   } catch (error) {
     console.log("QR Activation Error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
   }
 });
+
 
 // ✅ Public QR View (No Login Required)
 // ✅ Public QR View (Secure – Number Masked)
