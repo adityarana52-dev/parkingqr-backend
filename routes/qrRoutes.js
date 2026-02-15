@@ -114,5 +114,54 @@ router.post("/activate", protect, async (req, res) => {
   }
 });
 
+// ✅ Public QR View (No Login Required)
+router.get("/public/:qrId", async (req, res) => {
+  try {
+    const { qrId } = req.params;
+
+    const qr = await QrCode.findOne({ qrId })
+      .populate("assignedTo")
+      .populate("showroom");
+
+    if (!qr) {
+      return res.status(404).send("<h2>QR Not Found</h2>");
+    }
+
+    if (!qr.isAssigned) {
+      return res.status(400).send("<h2>QR Not Activated Yet</h2>");
+    }
+
+    // Basic HTML response
+    res.send(`
+      <html>
+        <head>
+          <title>Vehicle Contact</title>
+          <style>
+            body { font-family: Arial; text-align: center; padding: 40px; }
+            .card { border: 1px solid #ddd; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
+            button { padding: 10px 20px; font-size: 16px; margin-top: 15px; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h2>🚗 Vehicle Details</h2>
+            <p><strong>Vehicle Number:</strong> ${qr.vehicleNumber}</p>
+            <p><strong>Showroom:</strong> ${qr.showroom?.name || "N/A"}</p>
+
+            <a href="tel:${qr.assignedTo.mobile}">
+              <button>📞 Call Owner</button>
+            </a>
+          </div>
+        </body>
+      </html>
+    `);
+
+  } catch (error) {
+    console.log("Public QR Error:", error);
+    res.status(500).send("<h2>Server Error</h2>");
+  }
+});
+
+
 
 module.exports = router;
