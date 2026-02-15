@@ -13,7 +13,7 @@ const connectDB = require("./config/db");
 connectDB();
 
 const app = express();
-app.use("/api/qr", qrRoutes);
+
 
 app.use(cors());
 app.use(express.json());
@@ -21,6 +21,7 @@ app.use(express.json());
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/showrooms", showroomRoutes);
+app.use("/api/qr", qrRoutes);
 
 app.get("/", (req, res) => {
   res.send("ParkingQR API Running...");
