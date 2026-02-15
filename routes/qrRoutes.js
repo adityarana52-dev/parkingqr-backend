@@ -4,6 +4,8 @@ const QrCode = require("../models/QrCode");
 const Showroom = require("../models/Showroom");
 const User = require("../models/User");
 const protect = require("../middleware/authMiddleware"); // agar already use ho raha hai
+const MoveRequest = require("../models/MoveRequest");
+
 
 
 
@@ -188,6 +190,12 @@ router.get("/public/:qrId", async (req, res) => {
             <p><strong>Showroom:</strong> ${qr.showroom?.name || "N/A"}</p>
             <p><strong>Owner Contact:</strong> ${masked}</p>
 
+            <form method="POST" action="/api/qr/move-request">
+                <input type="hidden" name="qrId" value="${qr.qrId}" />
+                <button type="submit">🔔 Request Vehicle Move</button>
+            </form>
+
+
             <p style="margin-top:15px; font-size:14px;">
               Please contact politely if vehicle needs to be moved.
             </p>
@@ -202,6 +210,36 @@ router.get("/public/:qrId", async (req, res) => {
   }
 });
 
+// ✅ Public Move Request
+router.post("/move-request", async (req, res) => {
+  try {
+    const { qrId } = req.body;
+
+    const qr = await QrCode.findOne({ qrId });
+
+    if (!qr || !qr.isAssigned) {
+      return res.status(400).json({ message: "Invalid QR" });
+    }
+
+    await MoveRequest.create({
+      qr: qr._id,
+      vehicleNumber: qr.vehicleNumber,
+    });
+
+    res.send(`
+      <html>
+        <body style="text-align:center; font-family:Arial; padding:40px;">
+          <h2>✅ Move Request Sent</h2>
+          <p>The vehicle owner has been notified.</p>
+        </body>
+      </html>
+    `);
+
+  } catch (error) {
+    console.log("Move Request Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 
 
