@@ -231,10 +231,14 @@ router.get("/public/:qrId", async (req, res) => {
   }
 });
 
-// ✅ Public Move Request
+// ✅ Public Move Request (With 2-Minute Spam Protection)
 router.post("/move-request", async (req, res) => {
   try {
     const { qrId } = req.body;
+
+    if (!qrId) {
+      return res.status(400).json({ message: "QR ID required" });
+    }
 
     const qr = await QrCode.findOne({ qrId });
 
@@ -242,6 +246,27 @@ router.post("/move-request", async (req, res) => {
       return res.status(400).json({ message: "Invalid QR" });
     }
 
+    // ⏱ Check last request time (2 minutes limit)
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+
+    const recentRequest = await MoveRequest.findOne({
+      qr: qr._id,
+      createdAt: { $gte: twoMinutesAgo },
+    });
+
+    if (recentRequest) {
+      return res.send(`
+        <html>
+          <body style="text-align:center; font-family:Arial; padding:40px;">
+            <h2>⚠ Please Wait</h2>
+            <p>A move request was already sent recently.</p>
+            <p>Please wait 2 minutes before sending another request.</p>
+          </body>
+        </html>
+      `);
+    }
+
+    // Create new move request
     await MoveRequest.create({
       qr: qr._id,
       vehicleNumber: qr.vehicleNumber,
@@ -261,6 +286,7 @@ router.post("/move-request", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // ✅ Get My Move Requests (Owner)
 
