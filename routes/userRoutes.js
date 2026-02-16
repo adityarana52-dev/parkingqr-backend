@@ -14,4 +14,21 @@ router.get("/profile", protect, async (req, res) => {
   });
 });
 
+// ✅ Save Expo Push Token
+router.put("/save-push-token", protect, async (req, res) => {
+  try {
+    const { pushToken } = req.body;
+
+    req.user.expoPushToken = pushToken;
+    await req.user.save();
+
+    res.json({ message: "Push token saved" });
+
+  } catch (error) {
+    console.log("Push Token Save Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 module.exports = router;
