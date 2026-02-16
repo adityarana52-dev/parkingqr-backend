@@ -263,25 +263,53 @@ router.post("/move-request", async (req, res) => {
 });
 
 // ✅ Get My Move Requests (Owner)
-// ✅ Get Move Request Count
+
+
+// ✅ Get My Move Requests (Owner)
+// ✅ Get My Move Requests (Correct Filtering)
+router.get("/my-move-requests", protect, async (req, res) => {
+  try {
+    // Pehle user ke QRs find karo
+    const userQrs = await QrCode.find({
+      assignedTo: req.user._id,
+    });
+
+    const qrIds = userQrs.map((qr) => qr._id);
+
+    // Ab un QR ids ke move requests find karo
+    const requests = await MoveRequest.find({
+      qr: { $in: qrIds },
+    })
+      .sort({ createdAt: -1 });
+
+    res.json(requests);
+
+  } catch (error) {
+    console.log("Fetch Move Requests Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ✅ Get Move Request Count (Correct Version)
 router.get("/my-move-requests-count", protect, async (req, res) => {
   try {
-    const requests = await MoveRequest.find()
-      .populate({
-        path: "qr",
-        match: { assignedTo: req.user._id },
-      });
+    const userQrs = await QrCode.find({
+      assignedTo: req.user._id,
+    });
 
-    const filtered = requests.filter((r) => r.qr !== null);
+    const qrIds = userQrs.map((qr) => qr._id);
 
-    res.json({ count: filtered.length });
+    const count = await MoveRequest.countDocuments({
+      qr: { $in: qrIds },
+    });
+
+    res.json({ count });
 
   } catch (error) {
     console.log("Count Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
-
 
 
 module.exports = router;
