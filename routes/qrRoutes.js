@@ -263,25 +263,25 @@ router.post("/move-request", async (req, res) => {
 });
 
 // ✅ Get My Move Requests (Owner)
-router.get("/my-move-requests", protect, async (req, res) => {
+// ✅ Get Move Request Count
+router.get("/my-move-requests-count", protect, async (req, res) => {
   try {
     const requests = await MoveRequest.find()
       .populate({
         path: "qr",
         match: { assignedTo: req.user._id },
-      })
-      .sort({ createdAt: -1 });
+      });
 
-    // Filter only valid ones (because match can return null)
     const filtered = requests.filter((r) => r.qr !== null);
 
-    res.json(filtered);
+    res.json({ count: filtered.length });
 
   } catch (error) {
-    console.log("Fetch Move Requests Error:", error);
+    console.log("Count Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 module.exports = router;
