@@ -1,5 +1,3 @@
-const fetch = require("node-fetch");
-
 const sendPushNotification = async (expoPushToken, title, body) => {
   const message = {
     to: expoPushToken,
