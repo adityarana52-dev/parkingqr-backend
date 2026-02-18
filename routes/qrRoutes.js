@@ -83,7 +83,7 @@ router.post("/allocate", async (req, res) => {
 // ✅ Activate QR (1 Subscription = 1 Active QR)
 router.post("/activate", protect, async (req, res) => {
   try {
-    const { qrId, vehicleNumber } = req.body;
+    const { qrId, vehicleNumber, vehicleType } = req.body;
 
     if (!qrId || !vehicleNumber) {
       return res.status(400).json({
@@ -119,6 +119,7 @@ router.post("/activate", protect, async (req, res) => {
     qr.isAssigned = true;
     qr.assignedTo = req.user._id;
     qr.vehicleNumber = vehicleNumber;
+    qr.vehicleType = vehicleType;
 
     await qr.save();
 

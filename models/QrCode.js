@@ -21,6 +21,11 @@ const qrCodeSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+
+    vehicleType: {
+  type: String,
+},
+
     vehicleNumber: {
       type: String,
       default: null,
