@@ -6,7 +6,7 @@ const User = require("../models/User");
 const protect = require("../middleware/authMiddleware"); // agar already use ho raha hai
 const MoveRequest = require("../models/MoveRequest");
 const sendPushNotification = require("../utils/sendPushNotification");
-const User = require("../models/User");
+
 
 
 
