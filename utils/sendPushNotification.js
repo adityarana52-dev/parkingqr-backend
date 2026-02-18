@@ -7,7 +7,9 @@ const sendPushNotification = async (expoPushToken, title, body) => {
   };
 
   try {
-    await fetch("https://exp.host/--/api/v2/push/send", {
+  const response = await fetch(
+    "https://exp.host/--/api/v2/push/send",
+    {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -15,12 +17,15 @@ const sendPushNotification = async (expoPushToken, title, body) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(message),
-    });
+    }
+  );
 
-    console.log("Push sent successfully");
-  } catch (error) {
-    console.log("Push Send Error:", error);
-  }
+  const data = await response.json();
+  console.log("Expo Response:", data);
+
+} catch (error) {
+  console.log("Push Send Error:", error);
+}
 };
 
 module.exports = sendPushNotification;
