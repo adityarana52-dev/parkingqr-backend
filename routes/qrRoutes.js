@@ -5,7 +5,8 @@ const Showroom = require("../models/Showroom");
 const User = require("../models/User");
 const protect = require("../middleware/authMiddleware"); // agar already use ho raha hai
 const MoveRequest = require("../models/MoveRequest");
-
+const sendPushNotification = require("../utils/sendPushNotification");
+const User = require("../models/User");
 
 
 
@@ -271,6 +272,21 @@ router.post("/move-request", async (req, res) => {
       qr: qr._id,
       vehicleNumber: qr.vehicleNumber,
     });
+
+    // Find QR and populate owner
+      const qrData = await QrCode.findOne({ qrId }).populate("assignedTo");
+
+      if (
+        qrData &&
+        qrData.assignedTo &&
+        qrData.assignedTo.expoPushToken
+      ) {
+        await sendPushNotification(
+          qrData.assignedTo.expoPushToken,
+          "🚗 Move Request",
+          `Someone requested to move vehicle ${qrData.vehicleNumber}`
+        );
+      }
 
     res.send(`
       <html>
