@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Showroom = require("../models/Showroom");
 const QrCode = require("../models/QrCode");
+const mongoose = require("mongoose");
 
 // ✅ Create Showroom
 router.post("/create", async (req, res) => {
@@ -76,7 +77,7 @@ router.get("/sales-analytics/:showroomId", async (req, res) => {
     const result = await QrCode.aggregate([
       {
         $match: {
-          showroom: new require("mongoose").Types.ObjectId(showroomId),
+          showroom: new mongoose.Types.ObjectId(showroomId),
           isAssigned: true,
         },
       },
