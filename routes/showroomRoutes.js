@@ -68,5 +68,36 @@ router.get("/analytics", async (req, res) => {
   }
 });
 
+// ✅ Salesperson Analytics
+router.get("/sales-analytics/:showroomId", async (req, res) => {
+  try {
+    const { showroomId } = req.params;
+
+    const result = await QrCode.aggregate([
+      {
+        $match: {
+          showroom: new require("mongoose").Types.ObjectId(showroomId),
+          isAssigned: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$salesPerson",
+          totalActivated: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { totalActivated: -1 },
+      },
+    ]);
+
+    res.json(result);
+
+  } catch (error) {
+    console.log("Sales Analytics Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 module.exports = router;
