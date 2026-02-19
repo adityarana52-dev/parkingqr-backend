@@ -83,6 +83,29 @@ router.post("/allocate", async (req, res) => {
 // ✅ Activate QR (1 Subscription = 1 Active QR)
 router.post("/activate", protect, async (req, res) => {
   try {
+
+    const user = req.user;
+
+    // Subscription validation
+    if (!user.subscriptionActive) {
+      return res.status(403).json({
+        message: "Subscription inactive",
+      });
+    }
+
+    if (
+      user.subscriptionExpiresAt &&
+      user.subscriptionExpiresAt < new Date()
+    ) {
+      user.subscriptionActive = false;
+      await user.save();
+
+      return res.status(403).json({
+        message: "Subscription expired. Please renew.",
+      });
+    }
+
+
     const { qrId, vehicleNumber, vehicleType, salesPerson } = req.body;
 
     if (!qrId || !vehicleNumber) {
