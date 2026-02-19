@@ -146,7 +146,9 @@ router.get("/public/:qrId", async (req, res) => {
   try {
     const { qrId } = req.params;
 
-    const qr = await QrCode.findOne({ qrId }).populate("showroom");
+    const qr = await QrCode.findOne({ qrId })
+  .populate("showroom")
+  .populate("assignedTo");
 
     if (!qr) {
       return res.status(404).send("<h2>QR Not Found</h2>");
@@ -157,7 +159,12 @@ router.get("/public/:qrId", async (req, res) => {
     }
 
     // Mask mobile number
-    const mobile = qr.assignedTo.mobile;
+    const mobile = qr.assignedTo?.mobile;
+
+    if (!mobile) {
+      return res.status(400).send("<h2>Owner contact not available</h2>");
+    }
+
     const masked =
       mobile.slice(0, 2) +
       "XXXXXX" +
