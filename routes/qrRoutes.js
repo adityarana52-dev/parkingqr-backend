@@ -83,7 +83,7 @@ router.post("/allocate", async (req, res) => {
 // ✅ Activate QR (1 Subscription = 1 Active QR)
 router.post("/activate", protect, async (req, res) => {
   try {
-    const { qrId, vehicleNumber, vehicleType } = req.body;
+    const { qrId, vehicleNumber, vehicleType, salesPerson } = req.body;
 
     if (!qrId || !vehicleNumber) {
       return res.status(400).json({
@@ -120,6 +120,7 @@ router.post("/activate", protect, async (req, res) => {
     qr.assignedTo = req.user._id;
     qr.vehicleNumber = vehicleNumber;
     qr.vehicleType = vehicleType;
+    qr.salesPerson = salesPerson || null;
 
     await qr.save();
 
@@ -128,6 +129,7 @@ router.post("/activate", protect, async (req, res) => {
       qrId: qr.qrId,
       vehicleNumber: qr.vehicleNumber,
       showroom: qr.showroom ? qr.showroom.name : "Independent",
+      salesPerson: qr.salesPerson,
     });
 
   } catch (error) {

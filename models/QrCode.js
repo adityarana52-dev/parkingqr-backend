@@ -1,9 +1,12 @@
 const mongoose = require("mongoose");
 
-const qrSchema = new mongoose.Schema(
+const qrCodeSchema = new mongoose.Schema(
   {
-    qrId: { type: String, required: true, unique: true },
-
+    qrId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     showroom: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Showroom",
@@ -11,23 +14,29 @@ const qrSchema = new mongoose.Schema(
     },
 
     salesPerson: {
-      type: String,
-      default: null,
+        type: String,
+        default: null,
+      },
+    isAssigned: {
+      type: Boolean,
+      default: false,
     },
-
-    isAssigned: { type: Boolean, default: false },
-
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
     },
 
-    vehicleNumber: { type: String, default: null },
+    vehicleType: {
+  type: String,
+},
 
-    activatedAt: { type: Date, default: null },
+    vehicleNumber: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("QrCode", qrSchema);
+module.exports = mongoose.model("QrCode", qrCodeSchema);
