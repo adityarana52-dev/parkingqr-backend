@@ -11,6 +11,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    subscriptionExpiresAt: {
+        type: Date,
+      },
+      
     expoPushToken: {
   type: String,
 },
