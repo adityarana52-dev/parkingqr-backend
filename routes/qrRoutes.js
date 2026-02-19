@@ -92,7 +92,7 @@ router.post("/activate", protect, async (req, res) => {
     }
 
     // Find QR
-    const qr = await QrCode.findOne({ qrId });
+    const qr = await QrCode.findOne({ qrId }).populate("showroom");
 
     if (!qr) {
       return res.status(404).json({ message: "QR not found" });
@@ -127,6 +127,7 @@ router.post("/activate", protect, async (req, res) => {
       message: "QR activated successfully",
       qrId: qr.qrId,
       vehicleNumber: qr.vehicleNumber,
+      showroom: qr.showroom ? qr.showroom.name : "Independent",
     });
 
   } catch (error) {
@@ -145,9 +146,7 @@ router.get("/public/:qrId", async (req, res) => {
   try {
     const { qrId } = req.params;
 
-    const qr = await QrCode.findOne({ qrId })
-      .populate("assignedTo")
-      .populate("showroom");
+    const qr = await QrCode.findOne({ qrId }).populate("showroom");
 
     if (!qr) {
       return res.status(404).send("<h2>QR Not Found</h2>");
@@ -210,7 +209,7 @@ router.get("/public/:qrId", async (req, res) => {
           <div class="card">
             <h2>🚗 Vehicle Details</h2>
             <p><strong>Vehicle Number:</strong> ${qr.vehicleNumber}</p>
-            <p><strong>Showroom:</strong> ${qr.showroom?.name || "N/A"}</p>
+            <p><strong>Showroom:</strong> ${qr.showroom ? qr.showroom.name : "N/A"}</p>
             <p><strong>Owner Contact:</strong> ${masked}</p>
 
             <form method="POST" action="/api/qr/move-request">
