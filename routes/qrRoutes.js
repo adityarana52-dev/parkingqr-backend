@@ -111,7 +111,7 @@ router.post("/activate", protect, async (req, res) => {
 
     if (existingQr) {
       return res.status(400).json({
-        message: "Subscription allows only 1 active vehicle",
+        message: "Subscription allows only 1 active vehiclee",
       });
     }
 
