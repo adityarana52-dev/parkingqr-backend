@@ -11,6 +11,7 @@ router.get("/profile", protect, async (req, res) => {
     _id: req.user._id,
     mobile: req.user.mobile,
     subscriptionActive: req.user.subscriptionActive,
+    subscriptionExpiresAt: req.user.subscriptionExpiresAt,
   });
 });
 
