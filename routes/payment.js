@@ -1,5 +1,7 @@
 const express = require("express");
 const Razorpay = require("razorpay");
+const authMiddleware = require("../middleware/authMiddleware");
+
 const router = express.Router();
 
 const razorpay = new Razorpay({
@@ -7,26 +9,35 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-router.post("/create-order", async (req, res) => {
+
+// ✅ CREATE ORDER (Hardcoded ₹499)
+router.post("/create-order", authMiddleware, async (req, res) => {
   try {
-    const { amount } = req.body;
+
+    const amount = 499; // ₹499 fixed plan for now
 
     const options = {
-      amount: amount * 100, // in paise
+      amount: amount * 100, // Razorpay needs paise
       currency: "INR",
       receipt: "receipt_" + Date.now(),
     };
 
     const order = await razorpay.orders.create(options);
 
-    res.json(order);
+    res.json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+    });
+
   } catch (error) {
-  console.error("CREATE ORDER ERROR:", error);
-  res.status(500).json({
-    message: "Order creation failed",
-    actualError: error.message
-  });
-}
+    console.error("CREATE ORDER ERROR:", error);
+    res.status(500).json({
+      message: "Order creation failed",
+      error: error.message,
+    });
+  }
 });
 
 module.exports = router;
