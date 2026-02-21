@@ -26,6 +26,7 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/showrooms", showroomRoutes);
 app.use("/api/qr", require("./routes/qrRoutes"));
 app.use("/api/vehicles", vehicleRoutes);
+app.use("/api/payment", require("./routes/payment"));
 
 
 app.get("/", (req, res) => {
@@ -37,3 +38,4 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+console.log("Razorpay Key:", process.env.RAZORPAY_KEY_ID);
