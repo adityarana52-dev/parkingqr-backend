@@ -89,4 +89,31 @@ router.post("/verify", authMiddleware, async (req, res) => {
   }
 });
 
+
+// 📊 GET TOTAL REVENUE
+router.get("/revenue", authMiddleware, async (req, res) => {
+  try {
+    const totalRevenue = await Payment.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    const total = totalRevenue[0]?.total || 0;
+
+    const totalPayments = await Payment.countDocuments();
+
+    res.json({
+      totalRevenue: total,
+      totalPayments,
+    });
+  } catch (error) {
+    console.error("REVENUE ERROR:", error);
+    res.status(500).json({ message: "Revenue fetch failed" });
+  }
+});
+
 module.exports = router;
