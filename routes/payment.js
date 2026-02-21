@@ -3,6 +3,7 @@ const Razorpay = require("razorpay");
 const authMiddleware = require("../middleware/authMiddleware");
 const User = require("../models/User");
 const router = express.Router();
+const crypto = require("crypto");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -40,23 +41,41 @@ router.post("/create-order", authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ ACTIVATE SUBSCRIPTION
-router.post("/activate", authMiddleware, async (req, res) => {
+
+// ✅ VERIFY PAYMENT
+router.post("/verify", authMiddleware, async (req, res) => {
   try {
-    const userId = req.user.id; // authMiddleware se aayega
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+    } = req.body;
 
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: "Invalid signature" });
+    }
+
+    // ✅ Payment verified — activate subscription
     const expiry = new Date();
-    expiry.setDate(expiry.getDate() + 30); // 30 days plan
+    expiry.setDate(expiry.getDate() + 30);
 
-    await User.findByIdAndUpdate(userId, {
+    await User.findByIdAndUpdate(req.user.id, {
       subscriptionActive: true,
       subscriptionExpiresAt: expiry,
     });
 
     res.json({ success: true });
+
   } catch (error) {
-    console.error("ACTIVATE ERROR:", error);
-    res.status(500).json({ message: "Activation failed" });
+    console.error("VERIFY ERROR:", error);
+    res.status(500).json({ message: "Verification failed" });
   }
 });
 
