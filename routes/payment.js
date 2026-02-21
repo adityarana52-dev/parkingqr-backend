@@ -1,7 +1,7 @@
 const express = require("express");
 const Razorpay = require("razorpay");
 const authMiddleware = require("../middleware/authMiddleware");
-
+const User = require("../models/User");
 const router = express.Router();
 
 const razorpay = new Razorpay({
@@ -37,6 +37,26 @@ router.post("/create-order", authMiddleware, async (req, res) => {
       message: "Order creation failed",
       error: error.message,
     });
+  }
+});
+
+// ✅ ACTIVATE SUBSCRIPTION
+router.post("/activate", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id; // authMiddleware se aayega
+
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + 30); // 30 days plan
+
+    await User.findByIdAndUpdate(userId, {
+      subscriptionActive: true,
+      subscriptionExpiresAt: expiry,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("ACTIVATE ERROR:", error);
+    res.status(500).json({ message: "Activation failed" });
   }
 });
 
