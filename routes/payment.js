@@ -4,6 +4,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const User = require("../models/User");
 const router = express.Router();
 const crypto = require("crypto");
+const Payment = require("../models/Payment");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -61,6 +62,15 @@ router.post("/verify", authMiddleware, async (req, res) => {
     if (expectedSignature !== razorpay_signature) {
       return res.status(400).json({ message: "Invalid signature" });
     }
+
+    // 💰 Store payment record
+      await Payment.create({
+        userId: req.user.id,
+        razorpay_payment_id,
+        razorpay_order_id,
+        amount: 499, // for now fixed
+        status: "success",
+      });
 
     // ✅ Payment verified — activate subscription
     const expiry = new Date();
