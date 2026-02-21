@@ -19,7 +19,12 @@ const userSchema = new mongoose.Schema(
     expoPushToken: {
   type: String,
 },
-
+  
+  role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+},
   },
   { timestamps: true }
 );

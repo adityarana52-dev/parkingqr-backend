@@ -1,10 +1,17 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
-  });
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      role: user.role,   // 🔥 add role here
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "30d",
+    }
+  );
 };
 
 exports.loginUser = async (req, res) => {
@@ -25,7 +32,7 @@ exports.loginUser = async (req, res) => {
       _id: user._id,
       mobile: user.mobile,
       subscriptionActive: user.subscriptionActive,
-      token: generateToken(user._id),
+      token: generateToken(user),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

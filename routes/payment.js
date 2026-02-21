@@ -5,6 +5,7 @@ const User = require("../models/User");
 const router = express.Router();
 const crypto = require("crypto");
 const Payment = require("../models/Payment");
+const adminMiddleware = require("../middleware/adminMiddleware");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -91,7 +92,7 @@ router.post("/verify", authMiddleware, async (req, res) => {
 
 
 // 📊 ADMIN REVENUE DASHBOARD
-router.get("/revenue", authMiddleware, async (req, res) => {
+router.get("/revenue", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     // 1️⃣ Total Revenue
     const totalRevenueAgg = await Payment.aggregate([
