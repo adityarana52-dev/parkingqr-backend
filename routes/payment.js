@@ -21,8 +21,12 @@ router.post("/create-order", async (req, res) => {
 
     res.json(order);
   } catch (error) {
-    res.status(500).json({ error: "Order creation failed" });
-  }
+  console.error("CREATE ORDER ERROR:", error);
+  res.status(500).json({
+    message: "Order creation failed",
+    actualError: error.message
+  });
+}
 });
 
 module.exports = router;
