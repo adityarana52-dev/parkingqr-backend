@@ -90,10 +90,11 @@ router.post("/verify", authMiddleware, async (req, res) => {
 });
 
 
-// 📊 GET TOTAL REVENUE
+// 📊 ADMIN REVENUE DASHBOARD
 router.get("/revenue", authMiddleware, async (req, res) => {
   try {
-    const totalRevenue = await Payment.aggregate([
+    // 1️⃣ Total Revenue
+    const totalRevenueAgg = await Payment.aggregate([
       {
         $group: {
           _id: null,
@@ -102,13 +103,37 @@ router.get("/revenue", authMiddleware, async (req, res) => {
       },
     ]);
 
-    const total = totalRevenue[0]?.total || 0;
+    const totalRevenue = totalRevenueAgg[0]?.total || 0;
 
+    // 2️⃣ Total Payments Count
     const totalPayments = await Payment.countDocuments();
 
+    // 3️⃣ Monthly Breakdown
+    const monthlyRevenue = await Payment.aggregate([
+      {
+        $group: {
+          _id: {
+            year: { $year: "$paidAt" },
+            month: { $month: "$paidAt" },
+          },
+          total: { $sum: "$amount" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": -1, "_id.month": -1 } },
+    ]);
+
+    // 4️⃣ Last 10 Payments
+    const recentPayments = await Payment.find()
+      .sort({ paidAt: -1 })
+      .limit(10)
+      .populate("userId", "mobile");
+
     res.json({
-      totalRevenue: total,
+      totalRevenue,
       totalPayments,
+      monthlyRevenue,
+      recentPayments,
     });
   } catch (error) {
     console.error("REVENUE ERROR:", error);
