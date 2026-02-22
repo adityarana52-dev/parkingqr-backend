@@ -75,7 +75,7 @@ router.post("/verify", authMiddleware, async (req, res) => {
 
     // ✅ Payment verified — activate subscription
     const expiry = new Date();
-    expiry.setDate(expiry.getDate() + 30);
+    expiry.setFullYear(expiry.getFullYear() + 1);   // 🔥 1 Year Plan
 
     await User.findByIdAndUpdate(req.user.id, {
       subscriptionActive: true,

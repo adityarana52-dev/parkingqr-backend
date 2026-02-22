@@ -59,4 +59,49 @@ router.put("/save-push-token", protect, async (req, res) => {
   }
 });
 
+
+// 🔔 EXPIRY REMINDER CHECK (ADMIN ONLY)
+router.get("/expiring-soon", protect, async (req, res) => {
+  try {
+    const today = new Date();
+
+    const sevenDaysLater = new Date();
+    sevenDaysLater.setDate(today.getDate() + 7);
+
+    const oneDayLater = new Date();
+    oneDayLater.setDate(today.getDate() + 1);
+
+    const expiringSoon = await User.find({
+      subscriptionActive: true,
+      subscriptionExpiresAt: {
+        $gte: today,
+        $lte: sevenDaysLater,
+      },
+    });
+
+    const expiringTomorrow = await User.find({
+      subscriptionActive: true,
+      subscriptionExpiresAt: {
+        $gte: today,
+        $lte: oneDayLater,
+      },
+    });
+
+    const expiredUsers = await User.find({
+      subscriptionActive: true,
+      subscriptionExpiresAt: { $lt: today },
+    });
+
+    res.json({
+      expiringSoonCount: expiringSoon.length,
+      expiringTomorrowCount: expiringTomorrow.length,
+      expiredCount: expiredUsers.length,
+    });
+
+  } catch (error) {
+    console.log("Expiry check error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;
