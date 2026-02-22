@@ -16,7 +16,7 @@ connectDB();
 
 const app = express();
 
-const QR = require("./models/Qr");   // path adjust karo agar different ho
+const QR = require("./models/QrCode");   // path adjust karo agar different ho
 const User = require("./models/User");
 
 app.use(cors());
