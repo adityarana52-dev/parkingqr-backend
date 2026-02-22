@@ -10,6 +10,7 @@ router.get("/profile", protect, async (req, res) => {
   res.json({
     _id: req.user._id,
     mobile: req.user.mobile,
+     role: req.user.role,
     subscriptionActive: req.user.subscriptionActive,
     subscriptionExpiresAt: req.user.subscriptionExpiresAt,
   });
