@@ -39,23 +39,27 @@ app.get("/", (req, res) => {
 app.get("/scan/:qrId", async (req, res) => {
   try {
     const qrIdParam = req.params.qrId;
-    console.log("SCAN HIT:", qrIdParam);
 
-    const qr = await QR.findOne({ qrId: qrIdParam });
+    const qr = await QR.findOne({ qrId: qrIdParam })
+      .populate("assignedTo");
 
     if (!qr) {
-      return res.send("QR NOT FOUND IN DATABASE");
+      return res.send("QR NOT FOUND");
+    }
+
+    if (!qr.assignedTo) {
+      return res.send("QR NOT ACTIVATED YET");
     }
 
     return res.send(`
       <h2>QR FOUND</h2>
-      <p>QR ID: ${qr.qrId}</p>
       <p>Vehicle: ${qr.vehicleNumber || "N/A"}</p>
+      <p>Owner Mobile: ${qr.assignedTo.mobile || "NO MOBILE"}</p>
     `);
 
   } catch (error) {
     console.log("SCAN ERROR:", error);
-    return res.send("SERVER ERROR - CHECK LOGS");
+    return res.send("SERVER ERROR");
   }
 });
 
