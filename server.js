@@ -4,7 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const qrRoutes = require("./routes/qrRoutes");
 const vehicleRoutes = require("./routes/vehicleRoutes");
-
+const startExpiryCron = require("./utils/cronJobs");
 
 
 const dotenv = require("dotenv");
@@ -37,5 +37,6 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  startExpiryCron();   // 🔥 add this
 });
 console.log("Razorpay Key:", process.env.RAZORPAY_KEY_ID);
