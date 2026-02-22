@@ -63,22 +63,137 @@ app.get("/scan/:qrId", async (req, res) => {
     }
 
     return res.send(`
-      <html>
-        <head>
-          <title>Parking QR</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-        </head>
-        <body style="font-family: Arial; text-align:center; padding:20px;">
-          <h2>Vehicle Details</h2>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Parking QR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+      background: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
 
-          <div style="border:1px solid #ddd; padding:20px; border-radius:10px;">
-            <p><strong>Vehicle:</strong> ${qr.vehicleNumber || "N/A"}</p>
-            <p><strong>Showroom:</strong> ${qr.showroom?.name || "N/A"}</p>
-            <p><strong>Owner Contact:</strong> ${maskedNumber}</p>
-          </div>
-        </body>
-      </html>
-    `);
+    .container {
+      width: 95%;
+      max-width: 420px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+
+    .icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      margin: 0 0 20px 0;
+      font-weight: 600;
+    }
+
+    .info {
+      margin-bottom: 12px;
+      font-size: 15px;
+      color: #444;
+    }
+
+    .label {
+      font-weight: 600;
+      color: #111;
+    }
+
+    .button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .move-btn {
+      background: #111;
+      color: white;
+    }
+
+    .call-btn {
+      background: #16a34a;
+      color: white;
+    }
+
+    .footer {
+      margin-top: 18px;
+      font-size: 13px;
+      color: #777;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="icon">🚗</div>
+      <h2>Vehicle Details</h2>
+
+      <div class="info">
+        <span class="label">Vehicle Number:</span><br>
+        ${qr.vehicleNumber || "N/A"}
+      </div>
+
+      <div class="info">
+        <span class="label">Showroom:</span><br>
+        ${qr.showroom?.name || "N/A"}
+      </div>
+
+      <div class="info">
+        <span class="label">Owner Contact:</span><br>
+        ${maskedNumber}
+      </div>
+
+      <button class="button move-btn" onclick="sendMoveRequest()">
+        🔔 Request Owner to Move
+      </button>
+
+      <button class="button call-btn" onclick="callOwner()">
+        📞 Call Owner
+      </button>
+
+      <div class="footer">
+        Please contact politely if the vehicle needs to be moved.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function sendMoveRequest() {
+      fetch("/api/qr/move-request/${qr.qrId}", {
+        method: "POST"
+      })
+      .then(() => alert("Move request sent successfully"))
+      .catch(() => alert("Something went wrong"));
+    }
+
+    function callOwner() {
+      window.location.href = "tel:${user.mobile}";
+    }
+  </script>
+
+</body>
+</html>
+`);
 
   } catch (error) {
     console.log("SCAN ERROR:", error);
