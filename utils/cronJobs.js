@@ -3,71 +3,55 @@ const User = require("../models/User");
 const sendPushNotification = require("./sendPushNotification");
 
 const startExpiryCron = () => {
-  // Runs every day at 9:00 AM
+  // Daily at 9:00 AM
   cron.schedule("0 9 * * *", async () => {
-    console.log("Running Expiry Reminder Cron...");
-
-    const today = new Date();
-
-    const sevenDaysLater = new Date();
-    sevenDaysLater.setDate(today.getDate() + 7);
-
-    const oneDayLater = new Date();
-    oneDayLater.setDate(today.getDate() + 1);
+    console.log("Running Professional Expiry Cron...");
 
     try {
-      // 7 Day Reminder
-      const sevenDayUsers = await User.find({
+      const users = await User.find({
         subscriptionActive: true,
-        subscriptionExpiresAt: {
-          $gte: today,
-          $lte: sevenDaysLater,
-        },
         expoPushToken: { $ne: null },
       });
 
-      for (const user of sevenDayUsers) {
-        await sendPushNotification(
-          user.expoPushToken,
-          "Subscription Expiring Soon",
-          "Your subscription will expire in 7 days. Please renew."
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      for (const user of users) {
+        const expiryDate = new Date(user.subscriptionExpiresAt);
+        expiryDate.setHours(0, 0, 0, 0);
+        
+        // Difference in days
+        const diffTime = expiryDate - today;
+        const daysRemaining = Math.ceil(
+          diffTime / (1000 * 60 * 60 * 24)
         );
+
+        if (daysRemaining === 7) {
+          await sendPushNotification(
+            user.expoPushToken,
+            "Subscription Expiring in 7 Days",
+            "Your subscription will expire in 7 days. Renew now to avoid interruption."
+          );
+        }
+
+        if (daysRemaining === 1) {
+          await sendPushNotification(
+            user.expoPushToken,
+            "Subscription Expiring Tomorrow",
+            "Your subscription expires tomorrow. Please renew now."
+          );
+        }
+
+        if (daysRemaining === 0) {
+          await sendPushNotification(
+            user.expoPushToken,
+            "Subscription Expired",
+            "Your subscription has expired. Renew to continue using the app."
+          );
+        }
       }
 
-      // 1 Day Reminder
-      const oneDayUsers = await User.find({
-        subscriptionActive: true,
-        subscriptionExpiresAt: {
-          $gte: today,
-          $lte: oneDayLater,
-        },
-        expoPushToken: { $ne: null },
-      });
-
-      for (const user of oneDayUsers) {
-        await sendPushNotification(
-          user.expoPushToken,
-          "Subscription Expiring Tomorrow",
-          "Your subscription expires tomorrow. Renew now."
-        );
-      }
-
-      // Expired Today
-      const expiredUsers = await User.find({
-        subscriptionActive: true,
-        subscriptionExpiresAt: { $lt: today },
-        expoPushToken: { $ne: null },
-      });
-
-      for (const user of expiredUsers) {
-        await sendPushNotification(
-          user.expoPushToken,
-          "Subscription Expired",
-          "Your subscription has expired. Please renew to continue."
-        );
-      }
-
-      console.log("Expiry Reminder Cron Completed");
+      console.log("Professional Expiry Cron Completed");
 
     } catch (error) {
       console.log("Cron Error:", error);
