@@ -3,6 +3,7 @@ const router = express.Router();
 const { activateSubscription } = require("../controllers/userController");
 const protect = require("../middleware/authMiddleware");
 const User = require("../models/User");
+const sendPushNotification = require("../utils/sendPushNotification");
 
 router.put("/subscribe", protect, activateSubscription);
 
@@ -100,6 +101,40 @@ router.get("/expiring-soon", protect, async (req, res) => {
 
   } catch (error) {
     console.log("Expiry check error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+// 🔔 SEND EXPIRY REMINDERS (ADMIN ONLY)
+router.post("/send-expiry-reminders", protect, async (req, res) => {
+  try {
+    const today = new Date();
+
+    const sevenDaysLater = new Date();
+    sevenDaysLater.setDate(today.getDate() + 7);
+
+    const users = await User.find({
+      subscriptionActive: true,
+      subscriptionExpiresAt: {
+        $gte: today,
+        $lte: sevenDaysLater,
+      },
+      expoPushToken: { $ne: null },
+    });
+
+    for (const user of users) {
+      await sendPushNotification(
+        user.expoPushToken,
+        "Subscription Expiring Soon",
+        "Your subscription will expire in less than 7 days. Please renew."
+      );
+    }
+
+    res.json({ message: `Reminders sent to ${users.length} users` });
+
+  } catch (error) {
+    console.log("Reminder error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
