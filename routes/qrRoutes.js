@@ -336,6 +336,44 @@ router.post("/move-request", async (req, res) => {
 });
 
 
+const axios = require("axios");
+
+router.post("/call/:qrId", async (req, res) => {
+  try {
+    const { qrId } = req.params;
+    const { callerNumber } = req.body;
+
+    if (!callerNumber) {
+      return res.status(400).json({ message: "Caller number required" });
+    }
+
+    const qr = await QrCode.findOne({ qrId }).populate("assignedTo");
+
+    if (!qr || !qr.assignedTo) {
+      return res.status(400).json({ message: "Invalid QR" });
+    }
+
+    const ownerNumber = qr.assignedTo.mobile;
+
+    const url = `https://${process.env.EXOTEL_API_KEY}:${process.env.EXOTEL_API_TOKEN}@api.exotel.com/v1/Accounts/${process.env.EXOTEL_SID}/Calls/connect.json`;
+
+    await axios.post(url, null, {
+      params: {
+        From: callerNumber,
+        To: ownerNumber,
+        CallerId: process.env.EXOTEL_VIRTUAL_NUMBER,
+      },
+    });
+
+    res.json({ message: "Call initiated" });
+
+  } catch (error) {
+    console.log("CALL ERROR:", error.response?.data || error.message);
+    res.status(500).json({ message: "Call failed" });
+  }
+});
+
+
 // ✅ Get My Move Requests (Owner)
 
 

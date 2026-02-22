@@ -170,9 +170,24 @@ app.get("/scan/:qrId", async (req, res) => {
         </button>
       </form>
 
-      <button class="button call-btn" onclick="callOwner()">
-        📞 Call Owner
-      </button>
+      <script>
+        function callOwner() {
+          const caller = prompt("Enter your mobile number to connect call:");
+
+          if (!caller) return;
+
+          fetch("/api/qr/call/${qr.qrId}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ callerNumber: caller })
+          })
+          .then(res => res.json())
+          .then(data => alert("Call connecting..."))
+          .catch(() => alert("Call failed"));
+        }
+      </script>
 
       <div class="footer">
         Please contact politely if the vehicle needs to be moved.
