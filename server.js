@@ -35,13 +35,13 @@ app.get("/", (req, res) => {
   res.send("ParkingQR API Running...");
 });
 
-// 🔥 YAHAN ADD KARO
 app.get("/scan/:qrId", async (req, res) => {
   try {
     const qrIdParam = req.params.qrId;
 
     const qr = await QR.findOne({ qrId: qrIdParam })
-      .populate("assignedTo");
+      .populate("assignedTo")
+      .populate("showroom");
 
     if (!qr) {
       return res.send("QR NOT FOUND");
@@ -51,10 +51,33 @@ app.get("/scan/:qrId", async (req, res) => {
       return res.send("QR NOT ACTIVATED YET");
     }
 
+    const user = qr.assignedTo;
+
+    let maskedNumber = "Not Available";
+
+    if (user.mobile && user.mobile.length >= 10) {
+      maskedNumber =
+        user.mobile.substring(0, 2) +
+        "XXXXXX" +
+        user.mobile.substring(user.mobile.length - 2);
+    }
+
     return res.send(`
-      <h2>QR FOUND</h2>
-      <p>Vehicle: ${qr.vehicleNumber || "N/A"}</p>
-      <p>Owner Mobile: ${qr.assignedTo.mobile || "NO MOBILE"}</p>
+      <html>
+        <head>
+          <title>Parking QR</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </head>
+        <body style="font-family: Arial; text-align:center; padding:20px;">
+          <h2>Vehicle Details</h2>
+
+          <div style="border:1px solid #ddd; padding:20px; border-radius:10px;">
+            <p><strong>Vehicle:</strong> ${qr.vehicleNumber || "N/A"}</p>
+            <p><strong>Showroom:</strong> ${qr.showroom?.name || "N/A"}</p>
+            <p><strong>Owner Contact:</strong> ${maskedNumber}</p>
+          </div>
+        </body>
+      </html>
     `);
 
   } catch (error) {
