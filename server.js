@@ -163,9 +163,12 @@ app.get("/scan/:qrId", async (req, res) => {
         ${maskedNumber}
       </div>
 
-      <button class="button move-btn" onclick="sendMoveRequest()">
-        🔔 Request Owner to Move
-      </button>
+      <form method="POST" action="/api/qr/move-request">
+        <input type="hidden" name="qrId" value="${qr.qrId}" />
+        <button class="button move-btn">
+          🔔 Request Owner to Move
+        </button>
+      </form>
 
       <button class="button call-btn" onclick="callOwner()">
         📞 Call Owner
