@@ -38,9 +38,11 @@ app.get("/", (req, res) => {
 // 🔥 YAHAN ADD KARO
 app.get("/scan/:qrId", async (req, res) => {
   try {
-    const { qrId } = req.params;
+    
 
-    const qr = await QR.findOne({ qrId }).populate("assignedTo");
+    const qr = await QR.findOne({ qrId: req.params.qrId })
+  .populate("assignedTo")
+  .populate("showroom");
 
     if (!qr) {
       return res.status(404).send("<h1>QR Not Found</h1>");
@@ -74,7 +76,7 @@ app.get("/scan/:qrId", async (req, res) => {
           <h2>Vehicle Details</h2>
           <div class="card">
             <p><strong>Vehicle:</strong> ${qr.vehicleNumber || "N/A"}</p>
-            <p><strong>Showroom:</strong> ${qr.showroom || "N/A"}</p>
+            <p><strong>Showroom:</strong> ${qr.showroom?.name || "N/A"}</p>
             <p><strong>Owner:</strong> ${maskedNumber}</p>
 
             <button class="move" onclick="sendMoveRequest()">
