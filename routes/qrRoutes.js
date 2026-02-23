@@ -6,10 +6,11 @@ const User = require("../models/User");
 const protect = require("../middleware/authMiddleware"); // agar already use ho raha hai
 const MoveRequest = require("../models/MoveRequest");
 const sendPushNotification = require("../utils/sendPushNotification");
+const QRCodeLib = require("qrcode");
+const PDFDocument = require("pdfkit");
+const fs = require("fs");
 
-
-
-
+console.log("QR ROUTES LOADED");
 // ✅ Generate QR codes (Temporary Admin Use)
 router.post("/generate", async (req, res) => {
   try {
@@ -423,5 +424,64 @@ router.get("/my-move-requests-count", protect, async (req, res) => {
   }
 });
 
+
+router.post("/generate-printable", async (req, res) => {
+  try {
+    const { count } = req.body;
+
+    if (!count) {
+      return res.status(400).json({ message: "Count required" });
+    }
+
+    const qrList = [];
+
+    for (let i = 1; i <= count; i++) {
+      const qrId = `QR${Date.now()}${i}`;
+      qrList.push({ qrId });
+    }
+
+    const savedQrs = await QrCode.insertMany(qrList);
+
+    // Create PDF
+    const doc = new PDFDocument({ margin: 30 });
+    const filePath = `./qr-batch-${Date.now()}.pdf`;
+    doc.pipe(fs.createWriteStream(filePath));
+
+    for (const qr of savedQrs) {
+      const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+
+      const qrImage = await QRCodeLib.toDataURL(publicUrl);
+
+      const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
+      const imgBuffer = Buffer.from(base64Data, "base64");
+
+      doc.image(imgBuffer, {
+        fit: [150, 150],
+        align: "center",
+      });
+
+      doc.moveDown();
+      doc.fontSize(12).text(`QR ID: ${qr.qrId}`, {
+        align: "center",
+      });
+
+      doc.moveDown(2);
+
+      doc.addPage();
+    }
+
+    doc.end();
+
+    doc.on("finish", () => {
+      res.download(filePath, () => {
+        fs.unlinkSync(filePath);
+      });
+    });
+
+  } catch (error) {
+    console.log("Printable QR Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 module.exports = router;
