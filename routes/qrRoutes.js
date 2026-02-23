@@ -442,16 +442,23 @@ router.post("/generate-printable", async (req, res) => {
 
     const savedQrs = await QrCode.insertMany(qrList);
 
-    // Create PDF
+    const PDFDocument = require("pdfkit");
+    const QRCodeLib = require("qrcode");
+
     const doc = new PDFDocument({ margin: 30 });
-    const filePath = `./qr-batch-${Date.now()}.pdf`;
-    doc.pipe(fs.createWriteStream(filePath));
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=qr-batch.pdf"
+    );
+
+    doc.pipe(res);
 
     for (const qr of savedQrs) {
       const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
 
       const qrImage = await QRCodeLib.toDataURL(publicUrl);
-
       const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
       const imgBuffer = Buffer.from(base64Data, "base64");
 
@@ -465,18 +472,10 @@ router.post("/generate-printable", async (req, res) => {
         align: "center",
       });
 
-      doc.moveDown(2);
-
       doc.addPage();
     }
 
     doc.end();
-
-    doc.on("finish", () => {
-      res.download(filePath, () => {
-        fs.unlinkSync(filePath);
-      });
-    });
 
   } catch (error) {
     console.log("Printable QR Error:", error);
