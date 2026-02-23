@@ -170,24 +170,9 @@ app.get("/scan/:qrId", async (req, res) => {
         </button>
       </form>
 
-      <script>
-        function callOwner() {
-          const caller = prompt("Enter your mobile number to connect call:");
-
-          if (!caller) return;
-
-          fetch("/api/qr/call/${qr.qrId}", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ callerNumber: caller })
-          })
-          .then(res => res.json())
-          .then(data => alert("Call connecting..."))
-          .catch(() => alert("Call failed"));
-        }
-      </script>
+      <button class="button call-btn" onclick="callOwner()">
+        📞 Call Owner
+      </button>
 
       <div class="footer">
         Please contact politely if the vehicle needs to be moved.
@@ -204,10 +189,27 @@ app.get("/scan/:qrId", async (req, res) => {
       .catch(() => alert("Something went wrong"));
     }
 
-    function callOwner() {
-      window.location.href = "tel:${user.mobile}";
-    }
+   
   </script>
+
+  <script>
+  function callOwner() {
+    const caller = prompt("Enter your mobile number (with +91) to connect call:");
+
+    if (!caller) return;
+
+    fetch("/api/qr/call/${qr.qrId}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ callerNumber: caller })
+    })
+    .then(res => res.json())
+    .then(data => alert("Call connecting..."))
+    .catch(() => alert("Call failed"));
+  }
+</script>
 
 </body>
 </html>

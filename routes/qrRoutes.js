@@ -249,7 +249,7 @@ router.get("/public/:qrId", async (req, res) => {
                 <button type="submit">🔔 Request Vehicle Move</button>
             </form>
 
-
+            
             <p style="margin-top:15px; font-size:14px;">
               Please contact politely if vehicle needs to be moved.
             </p>
