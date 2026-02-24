@@ -425,60 +425,22 @@ router.get("/my-move-requests-count", protect, async (req, res) => {
 });
 
 
-router.post("/generate-printable", async (req, res) => {
+router.get("/generate-printable-test", async (req, res) => {
   try {
-    const { count } = req.body;
-
-    if (!count) {
-      return res.status(400).json({ message: "Count required" });
-    }
-
-    const qrList = [];
-
-    for (let i = 1; i <= count; i++) {
-      const qrId = `QR${Date.now()}${i}`;
-      qrList.push({ qrId });
-    }
-
-    const savedQrs = await QrCode.insertMany(qrList);
-
     const PDFDocument = require("pdfkit");
-    const QRCodeLib = require("qrcode");
-
-    const doc = new PDFDocument({ margin: 30 });
+    const doc = new PDFDocument();
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=qr-batch.pdf"
-    );
+    res.setHeader("Content-Disposition", "attachment; filename=test.pdf");
 
     doc.pipe(res);
 
-    for (const qr of savedQrs) {
-      const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
-
-      const qrImage = await QRCodeLib.toDataURL(publicUrl);
-      const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
-      const imgBuffer = Buffer.from(base64Data, "base64");
-
-      doc.image(imgBuffer, {
-        fit: [150, 150],
-        align: "center",
-      });
-
-      doc.moveDown();
-      doc.fontSize(12).text(`QR ID: ${qr.qrId}`, {
-        align: "center",
-      });
-
-      doc.addPage();
-    }
+    doc.fontSize(25).text("PDF Working!", 100, 100);
 
     doc.end();
 
   } catch (error) {
-    console.log("Printable QR Error:", error);
+    console.log("PDF TEST ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
