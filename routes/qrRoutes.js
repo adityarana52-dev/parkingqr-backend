@@ -11,13 +11,26 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 
 console.log("QR ROUTES LOADED");
-// ✅ Generate QR codes (Temporary Admin Use)
+
+// GEnerate QR Code
 router.post("/generate", async (req, res) => {
   try {
-    const { count } = req.body;
+    const { count, sourceType = "direct", showroomId = null } = req.body;
 
     if (!count) {
       return res.status(400).json({ message: "Count required" });
+    }
+
+    // Agar showroom type hai to showroom validate karo
+    if (sourceType === "showroom") {
+      if (!showroomId) {
+        return res.status(400).json({ message: "Showroom ID required" });
+      }
+
+      const showroom = await Showroom.findById(showroomId);
+      if (!showroom) {
+        return res.status(404).json({ message: "Showroom not found" });
+      }
     }
 
     const qrList = [];
@@ -27,12 +40,17 @@ router.post("/generate", async (req, res) => {
 
       qrList.push({
         qrId,
+        sourceType,
+        showroom: sourceType === "showroom" ? showroomId : null,
       });
     }
 
     await QrCode.insertMany(qrList);
 
-    res.json({ message: `${count} QR codes generated successfully` });
+    res.json({
+      message: `${count} QR codes generated successfully`,
+      sourceType,
+    });
 
   } catch (error) {
     console.log("Generate QR Error:", error);
@@ -425,14 +443,25 @@ router.get("/my-move-requests-count", protect, async (req, res) => {
 });
 
 
-router.get("/generate-printable/:count", async (req, res) => {
+router.post("/generate-printable", async (req, res) => {
   try {
-    const count = parseInt(req.params.count);
+    const { count, sourceType = "direct", showroomId = null } = req.body;
 
     if (!count || count > 50) {
       return res.status(400).json({
         message: "Count required (max 50 per batch)",
       });
+    }
+
+    if (sourceType === "showroom") {
+      if (!showroomId) {
+        return res.status(400).json({ message: "Showroom ID required" });
+      }
+
+      const showroom = await Showroom.findById(showroomId);
+      if (!showroom) {
+        return res.status(404).json({ message: "Showroom not found" });
+      }
     }
 
     const PDFDocument = require("pdfkit");
@@ -442,7 +471,12 @@ router.get("/generate-printable/:count", async (req, res) => {
 
     for (let i = 1; i <= count; i++) {
       const qrId = `QR${Date.now()}${i}`;
-      qrList.push({ qrId });
+
+      qrList.push({
+        qrId,
+        sourceType,
+        showroom: sourceType === "showroom" ? showroomId : null,
+      });
     }
 
     const savedQrs = await QrCode.insertMany(qrList);
@@ -470,6 +504,11 @@ router.get("/generate-printable/:count", async (req, res) => {
       doc.image(qrBuffer, x, y, { width: 120 });
 
       doc.fontSize(10).text(qr.qrId, x, y + 130, {
+        width: 120,
+        align: "center",
+      });
+
+      doc.fontSize(8).text(`Source: ${qr.sourceType}`, x, y + 145, {
         width: 120,
         align: "center",
       });
