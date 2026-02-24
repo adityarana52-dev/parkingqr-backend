@@ -425,22 +425,74 @@ router.get("/my-move-requests-count", protect, async (req, res) => {
 });
 
 
-router.get("/generate-printable-test", async (req, res) => {
+router.get("/generate-printable/:count", async (req, res) => {
   try {
+    const count = parseInt(req.params.count);
+
+    if (!count || count > 50) {
+      return res.status(400).json({
+        message: "Count required (max 50 per batch)",
+      });
+    }
+
     const PDFDocument = require("pdfkit");
-    const doc = new PDFDocument();
+    const QRCode = require("qrcode");
+
+    const qrList = [];
+
+    for (let i = 1; i <= count; i++) {
+      const qrId = `QR${Date.now()}${i}`;
+      qrList.push({ qrId });
+    }
+
+    const savedQrs = await QrCode.insertMany(qrList);
+
+    const doc = new PDFDocument({ margin: 40 });
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "attachment; filename=test.pdf");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=qr-batch.pdf"
+    );
 
     doc.pipe(res);
 
-    doc.fontSize(25).text("PDF Working!", 100, 100);
+    let x = 50;
+    let y = 50;
+    let itemsPerRow = 2;
+    let itemCount = 0;
+
+    for (const qr of savedQrs) {
+      const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+
+      const qrBuffer = await QRCode.toBuffer(publicUrl);
+
+      doc.image(qrBuffer, x, y, { width: 120 });
+
+      doc.fontSize(10).text(qr.qrId, x, y + 130, {
+        width: 120,
+        align: "center",
+      });
+
+      itemCount++;
+      x += 200;
+
+      if (itemCount % itemsPerRow === 0) {
+        x = 50;
+        y += 200;
+      }
+
+      if (y > 650) {
+        doc.addPage();
+        x = 50;
+        y = 50;
+      }
+    }
 
     doc.end();
 
   } catch (error) {
-    console.log("PDF TEST ERROR:", error);
+    console.log("Printable QR Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
