@@ -326,7 +326,7 @@ router.post("/move-request", async (req, res) => {
     await MoveRequest.create({
       qr: qr._id,
       vehicleNumber: qr.vehicleNumber,
-      type: type === "tow" ? "tow" : "move",
+      type: type && type.toLowerCase() === "tow" ? "tow" : "move",
     });
 
     // Push notification
@@ -337,14 +337,16 @@ router.post("/move-request", async (req, res) => {
       qrData.assignedTo &&
       qrData.assignedTo.expoPushToken
     ) {
-      const title =
-        type === "tow" ? "🚨 Towing Alert" : "🚗 Move Request";
+      const isTow = type && type.toLowerCase() === "tow";
 
-      const message =
-        type === "tow"
-          ? `Towing request initiated for vehicle ${qrData.vehicleNumber}`
-          : `Someone requested to move vehicle ${qrData.vehicleNumber}`;
+      const title = isTow
+        ? "🚨 Towing Alert"
+        : "🚗 Move Request";
 
+      const message = isTow
+        ? `Towing request initiated for vehicle ${qrData.vehicleNumber}`
+        : `Someone requested to move vehicle ${qrData.vehicleNumber}`;
+        
       await sendPushNotification(
         qrData.assignedTo.expoPushToken,
         title,
