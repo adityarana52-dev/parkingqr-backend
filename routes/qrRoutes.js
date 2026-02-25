@@ -252,10 +252,7 @@ router.get("/public/:qrId", async (req, res) => {
               cursor: pointer;
             }
 
-            .tow-btn {
-              background: #B91C1C;
-              color: white;
-            }
+          
                 button:hover {
               background-color: #333;
             }
@@ -272,11 +269,7 @@ router.get("/public/:qrId", async (req, res) => {
                 <input type="hidden" name="qrId" value="${qr.qrId}" />
                 <button type="submit">🔔 Request Vehicle Move</button>
 
-                <input type="hidden" name="qrId" value="${qr.qrId}" />
-                <input type="hidden" name="type" value="tow" />
-                <button class="button tow-btn">
-                  🚨 Toeing Your Vehicle
-                </button>
+                
             </form>
 
             

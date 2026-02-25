@@ -129,6 +129,11 @@ app.get("/scan/:qrId", async (req, res) => {
       color: white;
     }
 
+      .tow-btn {
+  background: #B91C1C;
+  color: white;
+}
+
     .call-btn {
       background: #16a34a;
       color: white;
@@ -168,6 +173,12 @@ app.get("/scan/:qrId", async (req, res) => {
         <button class="button move-btn">
           🔔 Request Owner to Move
         </button>
+
+        <input type="hidden" name="qrId" value="${qr.qrId}" />
+                <input type="hidden" name="type" value="tow" />
+                <button class="button tow-btn">
+                  🚨 Toeing Your Vehicle
+                </button>
       </form>
 
       <button class="button call-btn" onclick="callOwner()">
