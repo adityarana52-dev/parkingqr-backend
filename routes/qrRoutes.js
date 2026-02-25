@@ -251,7 +251,12 @@ router.get("/public/:qrId", async (req, res) => {
               margin-top: 15px;
               cursor: pointer;
             }
-            button:hover {
+
+            .tow-btn {
+              background: #B91C1C;
+              color: white;
+            }
+                button:hover {
               background-color: #333;
             }
           </style>
@@ -266,6 +271,12 @@ router.get("/public/:qrId", async (req, res) => {
             <form method="POST" action="/api/qr/move-request">
                 <input type="hidden" name="qrId" value="${qr.qrId}" />
                 <button type="submit">🔔 Request Vehicle Move</button>
+
+                <input type="hidden" name="qrId" value="${qr.qrId}" />
+                <input type="hidden" name="type" value="tow" />
+                <button class="button tow-btn">
+                  🚨 Toeing Your Vehicle
+                </button>
             </form>
 
             
@@ -286,7 +297,7 @@ router.get("/public/:qrId", async (req, res) => {
 // ✅ Public Move Request (With 2-Minute Spam Protection)
 router.post("/move-request", async (req, res) => {
   try {
-    const { qrId } = req.body;
+    const { qrId, type = "move" } = req.body;
 
     if (!qrId) {
       return res.status(400).json({ message: "QR ID required" });
@@ -298,7 +309,7 @@ router.post("/move-request", async (req, res) => {
       return res.status(400).json({ message: "Invalid QR" });
     }
 
-    // ⏱ Check last request time (2 minutes limit)
+    // ⏱ 2-minute spam protection (same logic)
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
 
     const recentRequest = await MoveRequest.findOne({
@@ -311,45 +322,54 @@ router.post("/move-request", async (req, res) => {
         <html>
           <body style="text-align:center; font-family:Arial; padding:40px;">
             <h2>⚠ Please Wait</h2>
-            <p>A move request was already sent recently.</p>
+            <p>A request was already sent recently.</p>
             <p>Please wait 2 minutes before sending another request.</p>
           </body>
         </html>
       `);
     }
 
-    // Create new move request
+    // Create new request
     await MoveRequest.create({
       qr: qr._id,
       vehicleNumber: qr.vehicleNumber,
+      type: type === "tow" ? "tow" : "move",
     });
 
-    // Find QR and populate owner
-      const qrData = await QrCode.findOne({ qrId }).populate("assignedTo");
+    // Push notification
+    const qrData = await QrCode.findOne({ qrId }).populate("assignedTo");
 
-      if (
-        qrData &&
-        qrData.assignedTo &&
-        qrData.assignedTo.expoPushToken
-      ) {
-        await sendPushNotification(
-          qrData.assignedTo.expoPushToken,
-          "🚗 Move Request",
-          `Someone requested to move vehicle ${qrData.vehicleNumber}`
-        );
-      }
+    if (
+      qrData &&
+      qrData.assignedTo &&
+      qrData.assignedTo.expoPushToken
+    ) {
+      const title =
+        type === "tow" ? "🚨 Towing Alert" : "🚗 Move Request";
+
+      const message =
+        type === "tow"
+          ? `Towing request initiated for vehicle ${qrData.vehicleNumber}`
+          : `Someone requested to move vehicle ${qrData.vehicleNumber}`;
+
+      await sendPushNotification(
+        qrData.assignedTo.expoPushToken,
+        title,
+        message
+      );
+    }
 
     res.send(`
       <html>
         <body style="text-align:center; font-family:Arial; padding:40px;">
-          <h2>✅ Move Request Sent</h2>
+          <h2>✅ Request Sent</h2>
           <p>The vehicle owner has been notified.</p>
         </body>
       </html>
     `);
 
   } catch (error) {
-    console.log("Move Request Error:", error);
+    console.log("Move/Tow Request Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
