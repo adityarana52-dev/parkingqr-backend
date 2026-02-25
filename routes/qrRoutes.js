@@ -481,54 +481,104 @@ router.post("/generate-printable", async (req, res) => {
 
     const savedQrs = await QrCode.insertMany(qrList);
 
-    const doc = new PDFDocument({ margin: 40 });
+    const doc = new PDFDocument({ margin: 20 });
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=qr-batch.pdf"
+res.setHeader("Content-Type", "application/pdf");
+res.setHeader(
+  "Content-Disposition",
+  "attachment; filename=parkingqr-luxury-batch.pdf"
+);
+
+doc.pipe(res);
+
+const stickerWidth = 180;
+const stickerHeight = 180;
+const gap = 20;
+
+let x = 40;
+let y = 40;
+let countPerRow = 3;
+let itemCount = 0;
+
+for (const qr of savedQrs) {
+  const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+  const qrBuffer = await QRCode.toBuffer(publicUrl);
+
+  // Black Background
+  doc
+    .save()
+    .rect(x, y, stickerWidth, stickerHeight)
+    .fill("#111111");
+
+  // Gold Border
+  doc
+    .lineWidth(2)
+    .strokeColor("#C6A75E")
+    .rect(x, y, stickerWidth, stickerHeight)
+    .stroke();
+
+  // Title
+  doc
+    .fillColor("#C6A75E")
+    .fontSize(14)
+    .font("Helvetica-Bold")
+    .text("PARKING QR", x, y + 12, {
+      width: stickerWidth,
+      align: "center",
+    });
+
+  // White QR Box
+  const qrBoxSize = 110;
+  const qrX = x + (stickerWidth - qrBoxSize) / 2;
+  const qrY = y + 35;
+
+  doc
+    .rect(qrX, qrY, qrBoxSize, qrBoxSize)
+    .fill("#FFFFFF");
+
+  doc.image(qrBuffer, qrX + 5, qrY + 5, {
+    width: qrBoxSize - 10,
+  });
+
+  // Bottom Text
+  doc
+    .fillColor("#C6A75E")
+    .fontSize(8)
+    .font("Helvetica")
+    .text(
+      "Scan for Owner Notification",
+      x,
+      y + 150,
+      { width: stickerWidth, align: "center" }
     );
 
-    doc.pipe(res);
+  doc
+    .fontSize(8)
+    .text(
+      "Move Request • Emergency Contact",
+      x,
+      y + 162,
+      { width: stickerWidth, align: "center" }
+    );
 
-    let x = 50;
-    let y = 50;
-    let itemsPerRow = 2;
-    let itemCount = 0;
+  doc.restore();
 
-    for (const qr of savedQrs) {
-      const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+  itemCount++;
+  x += stickerWidth + gap;
 
-      const qrBuffer = await QRCode.toBuffer(publicUrl);
+  if (itemCount % countPerRow === 0) {
+    x = 40;
+    y += stickerHeight + gap;
+  }
 
-      doc.image(qrBuffer, x, y, { width: 120 });
+  if (y + stickerHeight > 760) {
+    doc.addPage();
+    x = 40;
+    y = 40;
+  }
+}
 
-      doc.fontSize(10).text(qr.qrId, x, y + 130, {
-        width: 120,
-        align: "center",
-      });
-
-      doc.fontSize(8).text(`Source: ${qr.sourceType}`, x, y + 145, {
-        width: 120,
-        align: "center",
-      });
-
-      itemCount++;
-      x += 200;
-
-      if (itemCount % itemsPerRow === 0) {
-        x = 50;
-        y += 200;
-      }
-
-      if (y > 650) {
-        doc.addPage();
-        x = 50;
-        y = 50;
-      }
-    }
-
-    doc.end();
+doc.end();
 
   } catch (error) {
     console.log("Printable QR Error:", error);
