@@ -8,6 +8,13 @@ const moveRequestSchema = new mongoose.Schema(
       required: true,
     },
     vehicleNumber: String,
+
+     type: {
+      type: String,
+      enum: ["move", "tow"],
+      default: "move",
+    },
+
     requestedAt: {
       type: Date,
       default: Date.now,
