@@ -173,12 +173,14 @@ app.get("/scan/:qrId", async (req, res) => {
         <button class="button move-btn">
           🔔 Request Owner to Move
         </button>
+      </form>
 
+      <form method="POST" action="/api/qr/move-request">
         <input type="hidden" name="qrId" value="${qr.qrId}" />
-                <input type="hidden" name="type" value="tow" />
-                <button class="button tow-btn">
-                  🚨 Toeing Your Vehicle
-                </button>
+        <input type="hidden" name="type" value="tow" />
+        <button class="button tow-btn">
+          🚨 Toeing Your Vehicle
+        </button>
       </form>
 
       <button class="button call-btn" onclick="callOwner()">
