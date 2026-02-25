@@ -486,7 +486,7 @@ router.post("/generate-printable", async (req, res) => {
 res.setHeader("Content-Type", "application/pdf");
 res.setHeader(
   "Content-Disposition",
-  "attachment; filename=parkingqr-luxury-batch.pdf"
+  "attachment; filename=parkingqr-elite-batch.pdf"
 );
 
 doc.pipe(res);
@@ -505,16 +505,19 @@ for (const qr of savedQrs) {
   const qrBuffer = await QRCode.toBuffer(publicUrl);
 
   // Black Background
-  doc
-    .save()
-    .rect(x, y, stickerWidth, stickerHeight)
-    .fill("#111111");
+  doc.rect(x, y, stickerWidth, stickerHeight).fill("#0F0F0F");
 
-  // Gold Border
+  // Outer Gold Border
   doc
     .lineWidth(2)
     .strokeColor("#C6A75E")
     .rect(x, y, stickerWidth, stickerHeight)
+    .stroke();
+
+  // Inner Gold Frame
+  doc
+    .lineWidth(1)
+    .rect(x + 6, y + 6, stickerWidth - 12, stickerHeight - 12)
     .stroke();
 
   // Title
@@ -522,22 +525,28 @@ for (const qr of savedQrs) {
     .fillColor("#C6A75E")
     .fontSize(14)
     .font("Helvetica-Bold")
-    .text("PARKING QR", x, y + 12, {
+    .text("PARKING QR", x, y + 18, {
       width: stickerWidth,
       align: "center",
     });
 
-  // White QR Box
-  const qrBoxSize = 110;
-  const qrX = x + (stickerWidth - qrBoxSize) / 2;
-  const qrY = y + 35;
-
+  // Divider Line
   doc
-    .rect(qrX, qrY, qrBoxSize, qrBoxSize)
-    .fill("#FFFFFF");
+    .moveTo(x + 30, y + 40)
+    .lineTo(x + stickerWidth - 30, y + 40)
+    .strokeColor("#C6A75E")
+    .lineWidth(1)
+    .stroke();
 
-  doc.image(qrBuffer, qrX + 5, qrY + 5, {
-    width: qrBoxSize - 10,
+  // QR White Box
+  const qrBoxSize = 105;
+  const qrX = x + (stickerWidth - qrBoxSize) / 2;
+  const qrY = y + 50;
+
+  doc.rect(qrX, qrY, qrBoxSize, qrBoxSize).fill("#FFFFFF");
+
+  doc.image(qrBuffer, qrX + 6, qrY + 6, {
+    width: qrBoxSize - 12,
   });
 
   // Bottom Text
@@ -545,23 +554,30 @@ for (const qr of savedQrs) {
     .fillColor("#C6A75E")
     .fontSize(8)
     .font("Helvetica")
-    .text(
-      "Scan for Owner Notification",
-      x,
-      y + 150,
-      { width: stickerWidth, align: "center" }
-    );
+    .text("Scan for Owner Notification", x, y + 158, {
+      width: stickerWidth,
+      align: "center",
+    });
 
   doc
-    .fontSize(8)
-    .text(
-      "Move Request • Emergency Contact",
-      x,
-      y + 162,
-      { width: stickerWidth, align: "center" }
-    );
+    .text("Move Request • Toeing Your Vehicle", x, y + 168, {
+      width: stickerWidth,
+      align: "center",
+    });
 
-  doc.restore();
+  doc
+    .text("Emergency Contact Available", x, y + 178, {
+      width: stickerWidth,
+      align: "center",
+    });
+
+  doc
+    .fontSize(6)
+    .fillColor("#8C7A3A")
+    .text("Premium Vehicle Contact System", x, y + 190, {
+      width: stickerWidth,
+      align: "center",
+    });
 
   itemCount++;
   x += stickerWidth + gap;
