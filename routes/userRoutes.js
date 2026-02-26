@@ -17,6 +17,34 @@ router.get("/profile", protect, async (req, res) => {
   });
 });
 
+// ✅ Update Mobile Number
+router.put("/update-mobile", protect, async (req, res) => {
+  try {
+    const { mobile } = req.body;
+
+    if (!mobile || mobile.length < 10) {
+      return res.status(400).json({ message: "Valid mobile required" });
+    }
+
+    // Check duplicate
+    const existing = await User.findOne({ mobile });
+    if (existing && existing._id.toString() !== req.user._id.toString()) {
+      return res.status(400).json({ message: "Mobile already in use" });
+    }
+
+    req.user.mobile = mobile;
+    await req.user.save();
+
+    res.json({
+      message: "Mobile updated successfully",
+      mobile: req.user.mobile,
+    });
+  } catch (error) {
+    console.log("Update Mobile Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ✅ Save Expo Push Token
 router.put("/save-push-token", protect, async (req, res) => {
   try {
