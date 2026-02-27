@@ -167,4 +167,14 @@ router.post("/send-expiry-reminders", protect, async (req, res) => {
   }
 });
 
+// Delete account
+router.delete("/delete", protect, async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.user._id);
+    res.json({ message: "Account deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;

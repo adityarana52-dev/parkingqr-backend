@@ -7,6 +7,7 @@ const vehicleRoutes = require("./routes/vehicleRoutes");
 const startExpiryCron = require("./utils/cronJobs");
 
 
+
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use("/api/showrooms", showroomRoutes);
 app.use("/api/qr", require("./routes/qrRoutes"));
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/payment", require("./routes/payment"));
+app.use("/api/orders", require("./routes/orderRoutes"));
 
 
 app.get("/", (req, res) => {
