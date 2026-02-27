@@ -19,6 +19,22 @@ const userSchema = new mongoose.Schema(
     expoPushToken: {
   type: String,
 },
+
+qrOrders: [
+  {
+    name: String,
+    mobile: String,
+    address: String,
+    city: String,
+    state: String,
+    pincode: String,
+    paidAt: Date,
+    status: {
+      type: String,
+      default: "processing",
+    },
+  },
+],
   
   role: {
       type: String,
