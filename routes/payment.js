@@ -202,7 +202,7 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Invalid signature" });
     }
 
-    // 💰 Save payment record
+        // ✅ Save payment record
     await Payment.create({
       userId: req.user._id,
       razorpay_payment_id,
@@ -211,7 +211,7 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
       status: "shipping-success",
     });
 
-    // 📦 Save QR Order in dedicated collection
+    // ✅ Create QR Order document
     await QrOrder.create({
       user: req.user._id,
       name,
@@ -220,8 +220,7 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
       city,
       state,
       pincode,
-      razorpay_payment_id,
-      razorpay_order_id,
+      paymentId: razorpay_payment_id,
     });
 
     res.json({ success: true });

@@ -7,7 +7,6 @@ const qrOrderSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
     name: String,
     mobile: String,
     address: String,
@@ -15,19 +14,13 @@ const qrOrderSchema = new mongoose.Schema(
     state: String,
     pincode: String,
 
-    razorpay_payment_id: String,
-    razorpay_order_id: String,
-
-    amount: {
-      type: Number,
-      default: 50,
-    },
-
     status: {
       type: String,
-      enum: ["processing", "shipped", "delivered", "cancelled"],
+      enum: ["processing", "shipped", "delivered"],
       default: "processing",
     },
+
+    paymentId: String,
   },
   { timestamps: true }
 );
