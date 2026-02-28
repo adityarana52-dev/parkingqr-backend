@@ -180,6 +180,8 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
   console.log("🔥 VERIFY SHIPPING CALLED");
 console.log("BODY:", req.body);
 console.log("USER:", req.user);
+console.log("User ID (req.user.id):", req.user.id);
+  console.log("User ID (req.user._id):", req.user._id);
   try {
     const {
       razorpay_payment_id,
