@@ -256,6 +256,8 @@ router.post("/create-shipping-order", authMiddleware, async (req, res) => {
 // 🚚 VERIFY SHIPPING PAYMENT
 // ===============================
 router.post("/verify-shipping", authMiddleware, async (req, res) => {
+  console.log("🔥 VERIFY SHIPPING CALLED");
+console.log(req.body);
   try {
     const {
       razorpay_payment_id,
