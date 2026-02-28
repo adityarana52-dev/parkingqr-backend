@@ -6,6 +6,7 @@ const router = express.Router();
 const crypto = require("crypto");
 const Payment = require("../models/Payment");
 const adminMiddleware = require("../middleware/adminMiddleware");
+const QrOrder = require("../models/QrOrder");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -177,11 +178,6 @@ router.post("/create-shipping-order", authMiddleware, async (req, res) => {
 // 🚚 VERIFY SHIPPING PAYMENT
 // ===============================
 router.post("/verify-shipping", authMiddleware, async (req, res) => {
-  console.log("🔥 VERIFY SHIPPING CALLED");
-console.log("BODY:", req.body);
-console.log("USER:", req.user);
-console.log("User ID (req.user.id):", req.user.id);
-  console.log("User ID (req.user._id):", req.user._id);
   try {
     const {
       razorpay_payment_id,
@@ -199,38 +195,34 @@ console.log("User ID (req.user.id):", req.user.id);
 
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
+      .update(body)
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
       return res.status(400).json({ message: "Invalid signature" });
     }
 
-    // ✅ Save order inside user
-    // DEBUG START
-console.log("Updating user:", req.user);
+    // 💰 Save payment record
+    await Payment.create({
+      userId: req.user._id,
+      razorpay_payment_id,
+      razorpay_order_id,
+      amount: 50,
+      status: "shipping-success",
+    });
 
-const updatedUser = await User.findByIdAndUpdate(
-  req.user.id,
-  {
-    $push: {
-      qrOrders: {
-        name,
-        mobile,
-        address,
-        city,
-        state,
-        pincode,
-        paidAt: new Date(),
-        status: "processing",
-      },
-    },
-  },
-  { new: true, runValidators: true }
-);
-
-console.log("Updated user result:", updatedUser);
-// DEBUG END
+    // 📦 Save QR Order in dedicated collection
+    await QrOrder.create({
+      user: req.user._id,
+      name,
+      mobile,
+      address,
+      city,
+      state,
+      pincode,
+      razorpay_payment_id,
+      razorpay_order_id,
+    });
 
     res.json({ success: true });
 

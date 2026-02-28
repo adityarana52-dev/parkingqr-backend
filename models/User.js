@@ -20,22 +20,6 @@ const userSchema = new mongoose.Schema(
   type: String,
 },
 
-qrOrders: [
-  {
-    name: String,
-    mobile: String,
-    address: String,
-    city: String,
-    state: String,
-    pincode: String,
-    paidAt: Date,
-    status: {
-      type: String,
-      default: "processing",
-    },
-  },
-],
-  
   role: {
       type: String,
       enum: ["user", "admin"],
