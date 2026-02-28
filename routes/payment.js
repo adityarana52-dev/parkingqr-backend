@@ -284,20 +284,30 @@ console.log("USER:", req.user);
     }
 
     // ✅ Save order inside user
-    await User.findByIdAndUpdate(req.user.id, {
-      $push: {
-        qrOrders: {
-          name,
-          mobile,
-          address,
-          city,
-          state,
-          pincode,
-          paidAt: new Date(),
-          status: "processing",
-        },
+    // DEBUG START
+console.log("Updating user:", req.user);
+
+const updatedUser = await User.findByIdAndUpdate(
+  req.user.id,
+  {
+    $push: {
+      qrOrders: {
+        name,
+        mobile,
+        address,
+        city,
+        state,
+        pincode,
+        paidAt: new Date(),
+        status: "processing",
       },
-    });
+    },
+  },
+  { new: true }
+);
+
+console.log("Updated user result:", updatedUser);
+// DEBUG END
 
     res.json({ success: true });
 
