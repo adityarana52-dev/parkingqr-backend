@@ -231,4 +231,44 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
   }
 });
 
+
+router.get("/qr-orders", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const orders = await QrOrder.find()
+      .populate("user", "mobile")
+      .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch orders" });
+  }
+});
+
+router.put("/qr-orders/:id", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    const order = await QrOrder.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: "Status update failed" });
+  }
+});
+
+router.get("/my-qr-orders", authMiddleware, async (req, res) => {
+  try {
+    const orders = await QrOrder.find({ user: req.user._id })
+      .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch user orders" });
+  }
+});
+
 module.exports = router;
