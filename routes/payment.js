@@ -271,4 +271,59 @@ router.get("/my-qr-orders", authMiddleware, async (req, res) => {
   }
 });
 
+// ===============================
+// 📊 ADMIN BUSINESS STATS
+// ===============================
+router.get("/admin-stats", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const QrCode = require("../models/QrCode");
+    const QrOrder = require("../models/QrOrder");
+
+    // 🔹 Showroom activations
+    const showroomActivations = await QrCode.countDocuments({
+      showroom: { $ne: null },
+      isAssigned: true,
+    });
+
+    // 🔹 Direct activations
+    const directActivations = await QrCode.countDocuments({
+      showroom: null,
+      isAssigned: true,
+    });
+
+    // 🔹 Subscription revenue
+    const subscriptionRevenueAgg = await Payment.aggregate([
+      { $match: { status: "success" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+
+    const subscriptionRevenue =
+      subscriptionRevenueAgg[0]?.total || 0;
+
+    // 🔹 Shipping revenue
+    const shippingRevenueAgg = await Payment.aggregate([
+      { $match: { status: "shipping-success" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+
+    const shippingRevenue =
+      shippingRevenueAgg[0]?.total || 0;
+
+    // 🔹 Total QR orders
+    const totalQrOrders = await QrOrder.countDocuments();
+
+    res.json({
+      showroomActivations,
+      directActivations,
+      subscriptionRevenue,
+      shippingRevenue,
+      totalQrOrders,
+    });
+
+  } catch (error) {
+    console.error("ADMIN STATS ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch stats" });
+  }
+});
+
 module.exports = router;
