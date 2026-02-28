@@ -209,7 +209,7 @@ console.log("USER:", req.user);
 console.log("Updating user:", req.user);
 
 const updatedUser = await User.findByIdAndUpdate(
-  req.user._id,
+  req.user.id,
   {
     $push: {
       qrOrders: {
