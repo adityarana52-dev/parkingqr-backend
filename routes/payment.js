@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const Payment = require("../models/Payment");
 const adminMiddleware = require("../middleware/adminMiddleware");
 const QrOrder = require("../models/QrOrder");
+const sendPushNotification = require("../utils/sendPushNotification");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -232,15 +233,33 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
 });
 
 
-router.get("/qr-orders", authMiddleware, adminMiddleware, async (req, res) => {
+router.put("/qr-orders/:id", authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const orders = await QrOrder.find()
-      .populate("user", "mobile")
-      .sort({ createdAt: -1 });
+    const { status } = req.body;
 
-    res.json(orders);
+    const order = await QrOrder.findById(req.params.id).populate("user");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.status = status;
+    await order.save();
+
+    // 🔔 SEND PUSH NOTIFICATION TO USER
+    if (order.user.expoPushToken) {
+      await sendPushNotification(
+        order.user.expoPushToken,
+        "📦 QR Order Update",
+        `Your QR order is now ${status.toUpperCase()}`
+      );
+    }
+
+    res.json(order);
+
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch orders" });
+    console.error("Status update failed:", error);
+    res.status(500).json({ message: "Status update failed" });
   }
 });
 
