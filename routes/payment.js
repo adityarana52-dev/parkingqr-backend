@@ -263,21 +263,7 @@ router.put("/qr-orders/:id", authMiddleware, adminMiddleware, async (req, res) =
   }
 });
 
-router.put("/qr-orders/:id", authMiddleware, adminMiddleware, async (req, res) => {
-  try {
-    const { status } = req.body;
 
-    const order = await QrOrder.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-
-    res.json(order);
-  } catch (error) {
-    res.status(500).json({ message: "Status update failed" });
-  }
-});
 
 router.get("/my-qr-orders", authMiddleware, async (req, res) => {
   try {
