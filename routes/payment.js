@@ -251,7 +251,8 @@ router.put("/qr-orders/:id", authMiddleware, adminMiddleware, async (req, res) =
       await sendPushNotification(
         order.user.expoPushToken,
         "📦 QR Order Update",
-        `Your QR order is now ${status.toUpperCase()}`
+        `Your QR order is now ${status.toUpperCase()}`,
+         { type: "order" }   // 👈 ADD THIS
       );
     }
 

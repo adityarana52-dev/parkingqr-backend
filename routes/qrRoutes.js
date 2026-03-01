@@ -349,8 +349,13 @@ router.post("/move-request", async (req, res) => {
         
       await sendPushNotification(
         qrData.assignedTo.expoPushToken,
-        title,
-        message
+         "🚗 Move Request",
+          `Someone requested to move vehicle ${qrData.vehicleNumber}`,
+          { type: "move" },   // 👈 ADD THIS
+
+          "🚨 Tow Alert",
+          `Your vehicle may be towed`,
+          { type: "tow" }   // 👈 ADD THIS
       );
     }
 
