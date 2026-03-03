@@ -15,6 +15,11 @@ const moveRequestSchema = new mongoose.Schema(
       default: "move",
     },
 
+    location: {
+        latitude: Number,
+        longitude: Number,
+      },
+
     requestedAt: {
       type: Date,
       default: Date.now,

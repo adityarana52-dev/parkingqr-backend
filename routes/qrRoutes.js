@@ -265,13 +265,30 @@ router.get("/public/:qrId", async (req, res) => {
             <p><strong>Showroom:</strong> ${qr.showroom ? qr.showroom.name : "N/A"}</p>
             <p><strong>Owner Contact:</strong> ${masked}</p>
 
-            <form method="POST" action="/api/qr/move-request">
+            <form id="moveForm" method="POST" action="/api/qr/move-request">
                 <input type="hidden" name="qrId" value="${qr.qrId}" />
+                <input type="hidden" name="latitude" id="latitude" />
+                <input type="hidden" name="longitude" id="longitude" />
                 <button type="submit">🔔 Request Vehicle Move</button>
+              </form>
 
-                
-            </form>
+              <script>
+              document.getElementById("moveForm").addEventListener("submit", function(e) {
+                e.preventDefault();
 
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(function(position) {
+                    document.getElementById("latitude").value = position.coords.latitude;
+                    document.getElementById("longitude").value = position.coords.longitude;
+                    e.target.submit();
+                  }, function() {
+                    e.target.submit(); // if denied
+                  });
+                } else {
+                  e.target.submit();
+                }
+              });
+              </script>
             
             <p style="margin-top:15px; font-size:14px;">
               Please contact politely if vehicle needs to be moved.
@@ -290,7 +307,7 @@ router.get("/public/:qrId", async (req, res) => {
 // ✅ Public Move Request (With 2-Minute Spam Protection)
 router.post("/move-request", async (req, res) => {
   try {
-    const { qrId, type = "move" } = req.body;
+    const { qrId, type = "move", latitude, longitude } = req.body;
 
     if (!qrId) {
       return res.status(400).json({ message: "QR ID required" });
@@ -324,10 +341,16 @@ router.post("/move-request", async (req, res) => {
 
     // Create new request
     await MoveRequest.create({
-      qr: qr._id,
-      vehicleNumber: qr.vehicleNumber,
-      type: type && type.toLowerCase() === "tow" ? "tow" : "move",
-    });
+        qr: qr._id,
+        vehicleNumber: qr.vehicleNumber,
+        type: type && type.toLowerCase() === "tow" ? "tow" : "move",
+        location: latitude && longitude
+          ? {
+              latitude: parseFloat(latitude),
+              longitude: parseFloat(longitude),
+            }
+          : undefined,
+      });
 
     // Push notification
     const qrData = await QrCode.findOne({ qrId }).populate("assignedTo");
