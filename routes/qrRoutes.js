@@ -170,8 +170,16 @@ router.post("/activate", protect, async (req, res) => {
       message: "QR activated successfully",
       qrId: qr.qrId,
       vehicleNumber: qr.vehicleNumber,
-      showroom: qr.showroom ? qr.showroom.name : "Independent",
-      salesPerson: qr.salesPerson,
+
+      showroom: qr.showroom
+        ? {
+            name: qr.showroom.name,
+            code: qr.showroom.showroomCode,
+            city: qr.showroom.city,
+          }
+        : null,
+
+      salesPerson: qr.salesPerson || null,
     });
 
   } catch (error) {
