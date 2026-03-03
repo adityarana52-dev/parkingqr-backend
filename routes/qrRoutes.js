@@ -214,6 +214,58 @@ router.post("/activate", protect, async (req, res) => {
         );
       }
 
+      // 🔥 Commission Calculation (Plan = ₹299)
+const subscriptionAmount = 299;
+
+// 🏢 Showroom Commission
+if (qr.showroom) {
+
+  const showroomData = await Showroom.findById(qr.showroom._id);
+
+  if (showroomData) {
+
+    let showroomCommission = 0;
+
+    if (showroomData.commissionType === "fixed") {
+      showroomCommission = showroomData.commissionValue;
+    } else if (showroomData.commissionType === "percentage") {
+      showroomCommission = Math.round(
+        (subscriptionAmount * showroomData.commissionValue) / 100
+      );
+    }
+
+    await Showroom.findByIdAndUpdate(
+      showroomData._id,
+      { $inc: { totalEarnings: showroomCommission } }
+    );
+  }
+}
+
+
+// 👨‍💼 SalesPerson Commission
+if (salesPerson) {
+
+  const spData = await SalesPerson.findById(salesPerson);
+
+  if (spData) {
+
+    let salesCommission = 0;
+
+    if (spData.commissionType === "fixed") {
+      salesCommission = spData.commissionValue;
+    } else if (spData.commissionType === "percentage") {
+      salesCommission = Math.round(
+        (subscriptionAmount * spData.commissionValue) / 100
+      );
+    }
+
+    await SalesPerson.findByIdAndUpdate(
+      spData._id,
+      { $inc: { totalEarnings: salesCommission } }
+    );
+  }
+}
+
     res.json({
       message: "QR activated successfully",
       qrId: qr.qrId,
