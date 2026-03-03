@@ -9,6 +9,7 @@ const sendPushNotification = require("../utils/sendPushNotification");
 const QRCodeLib = require("qrcode");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
+const SalesPerson = require("../models/SalesPerson");
 
 console.log("QR ROUTES LOADED");
 
@@ -150,6 +151,31 @@ router.post("/activate", protect, async (req, res) => {
       assignedTo: req.user._id,
       isAssigned: true,
     });
+
+        // 🔥 Validate Sales Person if provided
+    if (salesPerson) {
+
+      const sp = await SalesPerson.findById(salesPerson);
+
+      if (!sp) {
+        return res.status(404).json({
+          message: "Sales person not found",
+        });
+      }
+
+      if (!sp.isActive) {
+        return res.status(400).json({
+          message: "Sales person is inactive",
+        });
+      }
+
+      if (!qr.showroom || sp.showroom.toString() !== qr.showroom._id.toString()) {
+        return res.status(400).json({
+          message: "Sales person does not belong to this showroom",
+        });
+      }
+
+    }
 
     if (existingQr) {
       return res.status(400).json({
