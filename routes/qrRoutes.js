@@ -286,12 +286,11 @@ router.get("/public/:qrId", async (req, res) => {
                         longitude: lng
                       })
                     }).then(() => {
-                      document.body.innerHTML = `
-                        <div style="text-align:center;padding:40px;font-family:Arial">
-                          <h2>✅ Request Sent</h2>
-                          <p>The vehicle owner has been notified.</p>
-                        </div>
-                      `;
+                      document.body.innerHTML =
+                        "<div style='text-align:center;padding:40px;font-family:Arial'>" +
+                        "<h2>✅ Request Sent</h2>" +
+                        "<p>The vehicle owner has been notified.</p>" +
+                        "</div>";
                     });
                   }
 
