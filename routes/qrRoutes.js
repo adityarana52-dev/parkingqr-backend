@@ -89,6 +89,12 @@ router.post("/allocate", async (req, res) => {
       { showroom: showroomId }
     );
 
+    // 🔥 Update Showroom Allotted Count
+        await Showroom.findByIdAndUpdate(
+          showroomId,
+          { $inc: { totalQRAllotted: quantity } }
+        );
+
     res.json({
       message: `${quantity} QR codes allocated to ${showroom.name}`,
     });
