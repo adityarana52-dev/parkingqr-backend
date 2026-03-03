@@ -183,52 +183,53 @@ app.get("/scan/:qrId", async (req, res) => {
         </form>
 
         <script>
-        function sendRequest(type, lat, lng) {
-          fetch("/api/qr/move-request", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              qrId: "${qr.qrId}",
-              type: type,
-              latitude: lat,
-              longitude: lng
-            })
-          }).then(() => {
-            document.body.innerHTML =
-              "<div style='text-align:center;padding:40px;font-family:Arial'>" +
-              "<h2>✅ Request Sent</h2>" +
-              "<p>The vehicle owner has been notified.</p>" +
-              "</div>";
-          });
-        }
+            let cachedLat = null;
+            let cachedLng = null;
 
-        function handleSubmit(type) {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              function(position) {
-                sendRequest(type, position.coords.latitude, position.coords.longitude);
-              },
-              function() {
-                sendRequest(type, null, null);
-              }
-            );
-          } else {
-            sendRequest(type, null, null);
-          }
-        }
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                function(position) {
+                  cachedLat = position.coords.latitude;
+                  cachedLng = position.coords.longitude;
+                },
+                function() {
+                  cachedLat = null;
+                  cachedLng = null;
+                }
+              );
+            }
 
-        document.getElementById("moveForm").addEventListener("submit", function(e) {
-          e.preventDefault();
-          handleSubmit("move");
-        });
+            function sendRequest(type) {
+              fetch("/api/qr/move-request", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  qrId: "${qr.qrId}",
+                  type: type,
+                  latitude: cachedLat,
+                  longitude: cachedLng
+                })
+              }).then(() => {
+                document.body.innerHTML =
+                  "<div style='text-align:center;padding:40px;font-family:Arial'>" +
+                  "<h2>✅ Request Sent</h2>" +
+                  "<p>The vehicle owner has been notified.</p>" +
+                  "</div>";
+              });
+            }
 
-        document.getElementById("towForm").addEventListener("submit", function(e) {
-          e.preventDefault();
-          handleSubmit("tow");
-        });
-        </script>
+            document.getElementById("moveForm").addEventListener("submit", function(e) {
+              e.preventDefault();
+              sendRequest("move");
+            });
+
+            document.getElementById("towForm").addEventListener("submit", function(e) {
+              e.preventDefault();
+              sendRequest("tow");
+            });
+            </script>
 
       <button class="button call-btn" onclick="callOwner()">
         📞 Call Owner
