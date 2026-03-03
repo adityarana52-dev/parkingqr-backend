@@ -170,20 +170,65 @@ app.get("/scan/:qrId", async (req, res) => {
         ${maskedNumber}
       </div>
 
-      <form method="POST" action="/api/qr/move-request">
-        <input type="hidden" name="qrId" value="${qr.qrId}" />
-        <button class="button move-btn">
-          🔔 Request Owner to Move
-        </button>
-      </form>
+      <form id="moveForm">
+          <button type="submit" class="button move-btn">
+            🔔 Request Owner to Move
+          </button>
+        </form>
 
-      <form method="POST" action="/api/qr/move-request">
-        <input type="hidden" name="qrId" value="${qr.qrId}" />
-        <input type="hidden" name="type" value="tow" />
-        <button class="button tow-btn">
-          🚨 Toeing Your Vehicle
-        </button>
-      </form>
+        <form id="towForm">
+          <button type="submit" class="button tow-btn">
+            🚨 Toeing Your Vehicle
+          </button>
+        </form>
+
+        <script>
+        function sendRequest(type, lat, lng) {
+          fetch("/api/qr/move-request", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              qrId: "${qr.qrId}",
+              type: type,
+              latitude: lat,
+              longitude: lng
+            })
+          }).then(() => {
+            document.body.innerHTML =
+              "<div style='text-align:center;padding:40px;font-family:Arial'>" +
+              "<h2>✅ Request Sent</h2>" +
+              "<p>The vehicle owner has been notified.</p>" +
+              "</div>";
+          });
+        }
+
+        function handleSubmit(type) {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              function(position) {
+                sendRequest(type, position.coords.latitude, position.coords.longitude);
+              },
+              function() {
+                sendRequest(type, null, null);
+              }
+            );
+          } else {
+            sendRequest(type, null, null);
+          }
+        }
+
+        document.getElementById("moveForm").addEventListener("submit", function(e) {
+          e.preventDefault();
+          handleSubmit("move");
+        });
+
+        document.getElementById("towForm").addEventListener("submit", function(e) {
+          e.preventDefault();
+          handleSubmit("tow");
+        });
+        </script>
 
       <button class="button call-btn" onclick="callOwner()">
         📞 Call Owner
