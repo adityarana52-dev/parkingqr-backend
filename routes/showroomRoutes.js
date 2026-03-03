@@ -3,25 +3,48 @@ const router = express.Router();
 const Showroom = require("../models/Showroom");
 const QrCode = require("../models/QrCode");
 const mongoose = require("mongoose");
+const StateCounter = require("../models/StateCounter");
 
 // ✅ Create Showroom
+// ✅ Create Showroom (State Wise Auto Code)
 router.post("/create", async (req, res) => {
   try {
-    const { name, city, contactPerson, phone } = req.body;
+    const { name, city, stateCode, contactPerson, phone } = req.body;
 
-    if (!name || !city) {
-      return res.status(400).json({ message: "Name and city are required" });
+    if (!name || !city || !stateCode) {
+      return res.status(400).json({ 
+        message: "Name, city and stateCode are required" 
+      });
     }
+
+    const upperStateCode = stateCode.toUpperCase();
+
+    // 🔥 Atomic Increment (Concurrency Safe)
+    const counter = await StateCounter.findOneAndUpdate(
+      { stateCode: upperStateCode },
+      { $inc: { lastNumber: 1 } },
+      { new: true, upsert: true }
+    );
+
+    const paddedNumber = counter.lastNumber
+      .toString()
+      .padStart(5, "0");
+
+    const showroomCode = upperStateCode + paddedNumber;
 
     const showroom = await Showroom.create({
       name,
       city,
+      stateCode: upperStateCode,
+      showroomCode,
       contactPerson,
       phone,
     });
 
     res.status(201).json(showroom);
+
   } catch (error) {
+    console.error("Create Showroom Error:", error);
     res.status(500).json({ message: "Server error", error });
   }
 });
