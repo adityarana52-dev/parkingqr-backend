@@ -326,7 +326,7 @@ router.get("/public/:qrId", async (req, res) => {
 // ✅ Public Move Request (With 2-Minute Spam Protection)
 router.post("/move-request", async (req, res) => {
   try {
-    const { qrId, type = "move", latitude, longitude } = req.body;
+    const { qrId, type = "move", latitude, longitude, accuracy } = req.body;
 
     if (!qrId) {
       return res.status(400).json({ message: "QR ID required" });
@@ -367,6 +367,7 @@ router.post("/move-request", async (req, res) => {
           ? {
               latitude: parseFloat(latitude),
               longitude: parseFloat(longitude),
+              accuracy: accuracy ? parseFloat(accuracy) : null
             }
           : undefined,
       });

@@ -185,16 +185,24 @@ app.get("/scan/:qrId", async (req, res) => {
         <script>
             let cachedLat = null;
             let cachedLng = null;
+            let cachedAccuracy = null;
 
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(
                 function(position) {
                   cachedLat = position.coords.latitude;
                   cachedLng = position.coords.longitude;
+                  cachedAccuracy = position.coords.accuracy;
                 },
                 function() {
                   cachedLat = null;
                   cachedLng = null;
+                  cachedAccuracy = null;
+                },
+                {
+                  enableHighAccuracy: true,
+                  timeout: 15000,
+                  maximumAge: 0
                 }
               );
             }
@@ -209,7 +217,8 @@ app.get("/scan/:qrId", async (req, res) => {
                   qrId: "${qr.qrId}",
                   type: type,
                   latitude: cachedLat,
-                  longitude: cachedLng
+                  longitude: cachedLng,
+                  accuracy: cachedAccuracy
                 })
               }).then(() => {
                 document.body.innerHTML =
