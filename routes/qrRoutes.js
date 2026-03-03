@@ -192,6 +192,22 @@ router.post("/activate", protect, async (req, res) => {
 
     await qr.save();
 
+    // 🔥 Update Showroom Activation Count
+      if (qr.showroom) {
+        await Showroom.findByIdAndUpdate(
+          qr.showroom._id,
+          { $inc: { totalQRActivated: 1 } }
+        );
+      }
+
+      // 🔥 Update SalesPerson Activation Count
+      if (salesPerson) {
+        await SalesPerson.findByIdAndUpdate(
+          salesPerson,
+          { $inc: { totalActivations: 1 } }
+        );
+      }
+
     res.json({
       message: "QR activated successfully",
       qrId: qr.qrId,
