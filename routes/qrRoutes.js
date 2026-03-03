@@ -265,30 +265,50 @@ router.get("/public/:qrId", async (req, res) => {
             <p><strong>Showroom:</strong> ${qr.showroom ? qr.showroom.name : "N/A"}</p>
             <p><strong>Owner Contact:</strong> ${masked}</p>
 
-            <form id="moveForm" method="POST" action="/api/qr/move-request">
-                <input type="hidden" name="qrId" value="${qr.qrId}" />
-                <input type="hidden" name="latitude" id="latitude" />
-                <input type="hidden" name="longitude" id="longitude" />
-                <button type="submit">🔔 Request Vehicle Move</button>
-              </form>
+            <form id="moveForm">
+                  <button type="submit">🔔 Request Vehicle Move</button>
+                </form>
 
-              <script>
-              document.getElementById("moveForm").addEventListener("submit", function(e) {
-                e.preventDefault();
+                <script>
+                document.getElementById("moveForm").addEventListener("submit", function(e) {
+                  e.preventDefault();
 
-                if (navigator.geolocation) {
-                  navigator.geolocation.getCurrentPosition(function(position) {
-                    document.getElementById("latitude").value = position.coords.latitude;
-                    document.getElementById("longitude").value = position.coords.longitude;
-                    e.target.submit();
-                  }, function() {
-                    e.target.submit(); // if denied
-                  });
-                } else {
-                  e.target.submit();
-                }
-              });
-              </script>
+                  function sendRequest(lat = null, lng = null) {
+                    fetch("/api/qr/move-request", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json"
+                      },
+                      body: JSON.stringify({
+                        qrId: "${qr.qrId}",
+                        type: "move",
+                        latitude: lat,
+                        longitude: lng
+                      })
+                    }).then(() => {
+                      document.body.innerHTML = `
+                        <div style="text-align:center;padding:40px;font-family:Arial">
+                          <h2>✅ Request Sent</h2>
+                          <p>The vehicle owner has been notified.</p>
+                        </div>
+                      `;
+                    });
+                  }
+
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                      function(position) {
+                        sendRequest(position.coords.latitude, position.coords.longitude);
+                      },
+                      function() {
+                        sendRequest();
+                      }
+                    );
+                  } else {
+                    sendRequest();
+                  }
+                });
+                </script>
             
             <p style="margin-top:15px; font-size:14px;">
               Please contact politely if vehicle needs to be moved.
