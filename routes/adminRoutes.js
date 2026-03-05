@@ -122,19 +122,25 @@ router.patch("/reject-request/:id", async (req, res) => {
 });
 
 router.get("/dashboard", async (req, res) => {
+
   try {
 
+    const SUBSCRIPTION_PRICE = 299;
+
+    // Basic counts
     const totalUsers = await User.countDocuments();
-
     const totalShowrooms = await Showroom.countDocuments();
-
     const totalQrGenerated = await QrCode.countDocuments();
 
     const totalQrActivated = await QrCode.countDocuments({
       isAssigned: true
     });
 
-    const totalRevenue = await Showroom.aggregate([
+    // Business revenue
+    const businessRevenue = totalQrActivated * SUBSCRIPTION_PRICE;
+
+    // Showroom commission
+    const showroomCommission = await Showroom.aggregate([
       {
         $group: {
           _id: null,
@@ -143,11 +149,30 @@ router.get("/dashboard", async (req, res) => {
       }
     ]);
 
+    const showroomTotal = showroomCommission[0]?.total || 0;
+
+    // Salesperson commission
+    const salesCommission = await SalesPerson.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$totalEarnings" }
+        }
+      }
+    ]);
+
+    const salesTotal = salesCommission[0]?.total || 0;
+
+    // Net profit
+    const netProfit = businessRevenue - showroomTotal - salesTotal;
+
+    // Top showrooms
     const topShowrooms = await Showroom.find()
       .sort({ totalEarnings: -1 })
       .limit(5)
-      .select("name showroomCode city totalEarnings totalQRActivated");
+      .select("name showroomCode city totalQRActivated totalEarnings");
 
+    // Top salespersons
     const topSalesPersons = await SalesPerson.find()
       .sort({ totalEarnings: -1 })
       .limit(5)
@@ -155,13 +180,21 @@ router.get("/dashboard", async (req, res) => {
       .select("name totalActivations totalEarnings");
 
     res.json({
+
       totalUsers,
       totalShowrooms,
       totalQrGenerated,
       totalQrActivated,
-      totalRevenue: totalRevenue[0]?.total || 0,
+
+      businessRevenue,
+      showroomCommission: showroomTotal,
+      salesCommission: salesTotal,
+
+      netProfit,
+
       topShowrooms,
       topSalesPersons
+
     });
 
   } catch (error) {
@@ -173,6 +206,7 @@ router.get("/dashboard", async (req, res) => {
     });
 
   }
+
 });
 
 module.exports = router;
