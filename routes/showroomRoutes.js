@@ -10,6 +10,7 @@ const jwt = require("jsonwebtoken");
 const protectShowroom = require("../middleware/showroomAuthMiddleware");
 const QrRequest = require("../models/QrRequest");
 
+
 // ✅ Create Showroom
 // ✅ Create Showroom (State Wise Auto Code)
 router.post("/create", async (req, res) => {
@@ -298,6 +299,30 @@ router.post("/request-qr", protectShowroom, async (req, res) => {
   } catch (error) {
 
     console.log("QR Request Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
+//for show qr requirement history
+router.get("/qr-requests", protectShowroom, async (req, res) => {
+
+  try {
+
+    const requests = await QrRequest.find({
+      showroom: req.showroom._id
+    })
+    .sort({ createdAt: -1 });
+
+    res.json(requests);
+
+  } catch (error) {
+
+    console.log("QR Request History Error:", error);
 
     res.status(500).json({
       message: "Server error"
