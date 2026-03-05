@@ -6,7 +6,8 @@ const QrCode = require("../models/QrCode");
 const Showroom = require("../models/Showroom");
 const User = require("../models/User");
 const SalesPerson = require("../models/SalesPerson");
-
+const PDFDocument = require("pdfkit");
+const QRCode = require("qrcode");
 
 router.get("/qr-requests", async (req, res) => {
 
@@ -201,6 +202,73 @@ router.get("/dashboard", async (req, res) => {
   } catch (error) {
 
     console.log("Admin Dashboard Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
+
+router.get("/download-showroom-qr/:showroomId", async (req, res) => {
+
+  try {
+
+    const showroomId = req.params.showroomId;
+
+    const qrs = await QrCode.find({
+      showroom: showroomId
+    }).limit(50); // batch size
+
+    if (!qrs.length) {
+      return res.status(404).json({
+        message: "No QR codes found"
+      });
+    }
+
+    const doc = new PDFDocument({ margin: 20 });
+
+    res.setHeader("Content-Type", "application/pdf");
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=qr-batch.pdf"
+    );
+
+    doc.pipe(res);
+
+    let x = 50;
+    let y = 50;
+
+    for (let qr of qrs) {
+
+      const publicUrl =
+        `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+
+      const qrImage = await QRCode.toDataURL(publicUrl);
+
+      const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
+
+      const imgBuffer = Buffer.from(base64Data, "base64");
+
+      doc.image(imgBuffer, x, y, { width: 120 });
+
+      y += 150;
+
+      if (y > 700) {
+        doc.addPage();
+        y = 50;
+      }
+
+    }
+
+    doc.end();
+
+  } catch (error) {
+
+    console.log("QR Download Error:", error);
 
     res.status(500).json({
       message: "Server error"
