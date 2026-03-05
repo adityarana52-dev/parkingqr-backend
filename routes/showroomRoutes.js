@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const StateCounter = require("../models/StateCounter");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const protectShowroom = require("../middleware/showroomAuthMiddleware");
 
 // ✅ Create Showroom
 // ✅ Create Showroom (State Wise Auto Code)
@@ -138,10 +139,10 @@ router.get("/sales-analytics/:showroomId", async (req, res) => {
 });
 
 // ✅ Showroom Dashboard
-router.get("/dashboard/:showroomId", async (req, res) => {
+router.get("/dashboard", protectShowroom, async (req, res) => {
   try {
 
-    const { showroomId } = req.params;
+    const showroomId = req.showroom._id;
 
     const showroom = await Showroom.findById(showroomId);
 
