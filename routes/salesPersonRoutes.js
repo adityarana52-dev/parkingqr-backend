@@ -141,4 +141,22 @@ router.patch("/deactivate/:id", async (req, res) => {
 });
 
 
+router.delete("/delete/:id", async (req, res) => {
+  try {
+
+    const { id } = req.params;
+
+    const salesperson = await SalesPerson.findByIdAndDelete(id);
+
+    if (!salesperson) {
+      return res.status(404).json({ message: "Salesperson not found" });
+    }
+
+    res.json({ message: "Salesperson deleted successfully" });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;
