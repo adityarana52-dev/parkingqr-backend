@@ -8,6 +8,7 @@ const StateCounter = require("../models/StateCounter");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const protectShowroom = require("../middleware/showroomAuthMiddleware");
+const QrRequest = require("../models/QrRequest");
 
 // ✅ Create Showroom
 // ✅ Create Showroom (State Wise Auto Code)
@@ -263,6 +264,40 @@ router.get("/qr-stock", protectShowroom, async (req, res) => {
   } catch (error) {
 
     console.log("QR Stock Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
+router.post("/request-qr", protectShowroom, async (req, res) => {
+
+  try {
+
+    const { quantity } = req.body;
+
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({
+        message: "Quantity required"
+      });
+    }
+
+    const request = await QrRequest.create({
+      showroom: req.showroom._id,
+      quantity
+    });
+
+    res.status(201).json({
+      message: "QR request submitted",
+      request
+    });
+
+  } catch (error) {
+
+    console.log("QR Request Error:", error);
 
     res.status(500).json({
       message: "Server error"
