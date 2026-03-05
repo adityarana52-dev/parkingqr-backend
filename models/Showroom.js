@@ -38,6 +38,16 @@ const showroomSchema = new mongoose.Schema(
       default: null,
     },
 
+    // 🔐 LOGIN FIELDS
+    username: {
+      type: String,
+      unique: true
+    },
+
+    password: {
+      type: String
+    },
+
     commissionType: {
       type: String,
       enum: ["fixed", "percentage"],
