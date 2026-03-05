@@ -236,4 +236,40 @@ router.post("/login", async (req, res) => {
 });
 
 
+router.get("/qr-stock", protectShowroom, async (req, res) => {
+
+  try {
+
+    const showroomId = req.showroom._id;
+
+    const totalAllocated = await QrCode.countDocuments({
+      showroom: showroomId
+    });
+
+    const totalActivated = await QrCode.countDocuments({
+      showroom: showroomId,
+      isAssigned: true
+    });
+
+    const remaining = totalAllocated - totalActivated;
+
+    res.json({
+      showroomCode: req.showroom.showroomCode,
+      totalAllocated,
+      totalActivated,
+      remaining
+    });
+
+  } catch (error) {
+
+    console.log("QR Stock Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
 module.exports = router;
