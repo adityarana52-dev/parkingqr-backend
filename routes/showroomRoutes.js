@@ -21,13 +21,29 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // Hash password
+    const upperStateCode = stateCode.toUpperCase();
+
+    // 🔥 Generate showroomCode using StateCounter
+    const counter = await StateCounter.findOneAndUpdate(
+      { stateCode: upperStateCode },
+      { $inc: { lastNumber: 1 } },
+      { new: true, upsert: true }
+    );
+
+    const paddedNumber = counter.lastNumber
+      .toString()
+      .padStart(5, "0");
+
+    const showroomCode = upperStateCode + paddedNumber;
+
+    // 🔐 Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const showroom = await Showroom.create({
       name,
       city,
-      stateCode,
+      stateCode: upperStateCode,
+      showroomCode,
       contactPerson,
       phone,
       username,
