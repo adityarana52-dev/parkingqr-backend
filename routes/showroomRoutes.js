@@ -5,48 +5,45 @@ const SalesPerson = require("../models/SalesPerson");
 const QrCode = require("../models/QrCode");
 const mongoose = require("mongoose");
 const StateCounter = require("../models/StateCounter");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 // ✅ Create Showroom
 // ✅ Create Showroom (State Wise Auto Code)
 router.post("/create", async (req, res) => {
   try {
-    const { name, city, stateCode, contactPerson, phone } = req.body;
 
-    if (!name || !city || !stateCode) {
-      return res.status(400).json({ 
-        message: "Name, city and stateCode are required" 
+    const { name, city, stateCode, contactPerson, phone, username, password } = req.body;
+
+    if (!name || !city || !stateCode || !username || !password) {
+      return res.status(400).json({
+        message: "Name, city, stateCode, username and password required"
       });
     }
 
-    const upperStateCode = stateCode.toUpperCase();
-
-    // 🔥 Atomic Increment (Concurrency Safe)
-    const counter = await StateCounter.findOneAndUpdate(
-      { stateCode: upperStateCode },
-      { $inc: { lastNumber: 1 } },
-      { new: true, upsert: true }
-    );
-
-    const paddedNumber = counter.lastNumber
-      .toString()
-      .padStart(5, "0");
-
-    const showroomCode = upperStateCode + paddedNumber;
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const showroom = await Showroom.create({
       name,
       city,
-      stateCode: upperStateCode,
-      showroomCode,
+      stateCode,
       contactPerson,
       phone,
+      username,
+      password: hashedPassword
     });
 
     res.status(201).json(showroom);
 
   } catch (error) {
-    console.error("Create Showroom Error:", error);
-    res.status(500).json({ message: "Server error", error });
+
+    console.log("Create Showroom Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
   }
 });
 
@@ -173,4 +170,53 @@ router.get("/dashboard/:showroomId", async (req, res) => {
 
   }
 });
+
+router.post("/login", async (req, res) => {
+
+  try {
+
+    const { username, password } = req.body;
+
+    const showroom = await Showroom.findOne({ username });
+
+    if (!showroom) {
+      return res.status(400).json({
+        message: "Invalid username or password"
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, showroom.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Invalid username or password"
+      });
+    }
+
+    const token = jwt.sign(
+      { id: showroom._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      message: "Login successful",
+      token,
+      showroomId: showroom._id,
+      showroomCode: showroom.showroomCode
+    });
+
+  } catch (error) {
+
+    console.log("Showroom Login Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
+
 module.exports = router;
