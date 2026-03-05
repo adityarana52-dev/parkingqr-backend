@@ -54,10 +54,11 @@ router.patch("/approve-request/:id", async (req, res) => {
 
     for (let i = 1; i <= quantity; i++) {
 
-      const qrId = `QR${Date.now()}${i}`;
+      const qrId = `QR${Date.now()}${Math.floor(Math.random()*10000)}`;
 
       qrList.push({
         qrId,
+        sourceType: "showroom",
         showroom: request.showroom
       });
 
