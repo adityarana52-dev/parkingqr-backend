@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Showroom = require("../models/Showroom");
+const SalesPerson = require("../models/SalesPerson");
 const QrCode = require("../models/QrCode");
 const mongoose = require("mongoose");
 const StateCounter = require("../models/StateCounter");
@@ -123,5 +124,53 @@ router.get("/sales-analytics/:showroomId", async (req, res) => {
   }
 });
 
+// ✅ Showroom Dashboard
+router.get("/dashboard/:showroomId", async (req, res) => {
+  try {
 
+    const { showroomId } = req.params;
+
+    const showroom = await Showroom.findById(showroomId);
+
+    if (!showroom) {
+      return res.status(404).json({
+        message: "Showroom not found"
+      });
+    }
+
+    // Remaining stock
+    const remainingStock =
+      showroom.totalQRAllotted - showroom.totalQRActivated;
+
+    // SalesPerson stats
+    const salesPersons = await SalesPerson.find({
+      showroom: showroomId
+    }).select("name totalActivations totalEarnings");
+
+    res.json({
+
+      showroomName: showroom.name,
+      showroomCode: showroom.showroomCode,
+      city: showroom.city,
+
+      totalAllotted: showroom.totalQRAllotted,
+      totalActivated: showroom.totalQRActivated,
+      remainingStock,
+
+      totalEarnings: showroom.totalEarnings,
+
+      salesPersons
+
+    });
+
+  } catch (error) {
+
+    console.log("Showroom Dashboard Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+});
 module.exports = router;
