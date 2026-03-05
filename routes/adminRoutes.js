@@ -4,6 +4,8 @@ const router = express.Router();
 const QrRequest = require("../models/QrRequest");
 const QrCode = require("../models/QrCode");
 const Showroom = require("../models/Showroom");
+const User = require("../models/User");
+const SalesPerson = require("../models/SalesPerson");
 
 
 router.get("/qr-requests", async (req, res) => {
@@ -117,6 +119,60 @@ router.patch("/reject-request/:id", async (req, res) => {
 
   }
 
+});
+
+router.get("/dashboard", async (req, res) => {
+  try {
+
+    const totalUsers = await User.countDocuments();
+
+    const totalShowrooms = await Showroom.countDocuments();
+
+    const totalQrGenerated = await QrCode.countDocuments();
+
+    const totalQrActivated = await QrCode.countDocuments({
+      isAssigned: true
+    });
+
+    const totalRevenue = await Showroom.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$totalEarnings" }
+        }
+      }
+    ]);
+
+    const topShowrooms = await Showroom.find()
+      .sort({ totalEarnings: -1 })
+      .limit(5)
+      .select("name showroomCode city totalEarnings totalQRActivated");
+
+    const topSalesPersons = await SalesPerson.find()
+      .sort({ totalEarnings: -1 })
+      .limit(5)
+      .populate("showroom", "name showroomCode")
+      .select("name totalActivations totalEarnings");
+
+    res.json({
+      totalUsers,
+      totalShowrooms,
+      totalQrGenerated,
+      totalQrActivated,
+      totalRevenue: totalRevenue[0]?.total || 0,
+      topShowrooms,
+      topSalesPersons
+    });
+
+  } catch (error) {
+
+    console.log("Admin Dashboard Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
 });
 
 module.exports = router;
