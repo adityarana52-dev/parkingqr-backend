@@ -169,6 +169,8 @@ router.get("/dashboard", protectShowroom, async (req, res) => {
       showroomCode: showroom.showroomCode,
       city: showroom.city,
 
+      isActive: showroom.isActive,
+
       totalAllotted: showroom.totalQRAllotted,
       totalActivated: showroom.totalQRActivated,
       remainingStock,
