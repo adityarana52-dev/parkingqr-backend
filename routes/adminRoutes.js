@@ -127,6 +127,10 @@ router.get("/dashboard", async (req, res) => {
 
   try {
 
+        const pendingRequests = await QrRequest.countDocuments({
+    status: "pending"
+    });
+
     const SUBSCRIPTION_PRICE = 299;
 
     // Basic counts
@@ -193,6 +197,7 @@ router.get("/dashboard", async (req, res) => {
       salesCommission: salesTotal,
 
       netProfit,
+      pendingRequests,
 
       topShowrooms,
       topSalesPersons
