@@ -26,7 +26,7 @@ router.post("/", protect, async (req, res) => {
     });
 
     await assignDirectQr(order._id, userId, quantity);
-    
+
     res.json({
       message: "Order placed successfully",
       order,
@@ -38,6 +38,29 @@ router.post("/", protect, async (req, res) => {
     console.log("Order Error:", error);
     res.status(500).json({ message: "Server error" });
   }
+});
+
+// ✅ Get All Orders (Admin)
+router.get("/admin", async (req, res) => {
+
+try{
+
+const orders = await QrOrder.find()
+.sort({createdAt:-1})
+.populate("user","mobile");
+
+res.json(orders);
+
+}catch(error){
+
+console.log("Admin orders error",error);
+
+res.status(500).json({
+message:"Server error"
+});
+
+}
+
 });
 
 module.exports = router;
