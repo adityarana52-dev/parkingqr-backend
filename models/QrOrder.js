@@ -21,6 +21,11 @@ const qrOrderSchema = new mongoose.Schema(
     },
 
     paymentId: String,
+
+    quantity: {
+  type: Number,
+     default: 1
+}
   },
   { timestamps: true }
 );

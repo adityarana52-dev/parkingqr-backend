@@ -250,6 +250,7 @@ router.post("/activate", protect, async (req, res) => {
 
     // Assign QR
     qr.isAssigned = true;
+    qr.qrStatus = "activated";
     qr.assignedTo = req.user._id;
     qr.vehicleNumber = vehicleNumber;
     qr.vehicleType = vehicleType;
@@ -710,7 +711,10 @@ router.post("/generate-printable", async (req, res) => {
       });
     }
 
-    const savedQrs = await QrCode.insertMany(qrList);
+    const savedQrs = await QrCode.find({
+        qrStatus:"assigned",
+        orderId:req.body.orderId
+        });
 
     const doc = new PDFDocument({ margin: 20 });
 
@@ -831,6 +835,53 @@ doc.end();
     console.log("Printable QR Error:", error);
     res.status(500).json({ message: "Server error" });
   }
+});
+
+//Assigned directly to direct users
+router.post("/assign-direct-order", async (req,res)=>{
+
+try{
+
+const {orderId,userId,quantity} = req.body;
+
+const availableQrs = await QrCode.find({
+sourceType:"direct",
+qrStatus:"generated",
+isAssigned:false
+}).limit(quantity);
+
+if(availableQrs.length < quantity){
+return res.status(400).json({
+message:"Not enough QR stock"
+});
+}
+
+const qrIds = availableQrs.map(q=>q._id);
+
+await QrCode.updateMany(
+{_id:{$in:qrIds}},
+{
+orderId,
+assignedTo:userId,
+qrStatus:"assigned"
+}
+);
+
+res.json({
+message:"QR assigned successfully",
+qrIds
+});
+
+}catch(error){
+
+console.log("Assign direct QR error",error);
+
+res.status(500).json({
+message:"Server error"
+});
+
+}
+
 });
 
 module.exports = router;

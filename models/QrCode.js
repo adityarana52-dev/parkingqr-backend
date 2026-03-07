@@ -41,6 +41,18 @@ const qrCodeSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "QrOrder",
+      default: null
+    },
+
+    qrStatus: {
+      type: String,
+      enum: ["generated", "assigned", "activated"],
+      default: "generated"
+    }
   },
   { timestamps: true }
 );
