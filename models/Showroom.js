@@ -51,12 +51,12 @@ const showroomSchema = new mongoose.Schema(
     commissionType: {
       type: String,
       enum: ["fixed", "percentage"],
-      default: "fixed"
+      default: "percentage"
     },
 
     commissionValue: {
       type: Number,
-      default: 0
+      default: 16.72
     },
 
     totalEarnings: {

@@ -273,11 +273,15 @@ router.post("/activate", protect, async (req, res) => {
         );
       }
 
+      console.log("QR SHOWROOM:", qr.showroom);
+    console.log("SALESPERSON:", salesPerson);
+
       // 🔥 Commission Calculation (Plan = ₹299)
-const subscriptionAmount = 299;
+const subscriptionAmount = user.subscriptionPrice || 299;
 
 // 🏢 Showroom Commission
 if (qr.showroom) {
+  console.log("SHOWROOM COMMISSION:", showroomCommission);
 
   const showroomData = await Showroom.findById(qr.showroom._id);
 
@@ -302,7 +306,8 @@ if (qr.showroom) {
 
 
 // 👨‍💼 SalesPerson Commission
-if (salesPerson) {
+if (salesPerson && salesPerson !== "null") {
+  console.log("SALESPERSON COMMISSION:", salesCommission);
 
   const spData = await SalesPerson.findById(salesPerson);
 
@@ -595,7 +600,7 @@ router.post("/call/:qrId", async (req, res) => {
     const qr = await QrCode.findOne({ qrId }).populate("assignedTo");
 
     if (!qr || !qr.assignedTo) {
-      return res.status(400).json({ message: "Invalid QR" });
+      return res.status(400).json({ message: "This QR is already activated with another vehicle" });
     }
 
     const ownerNumber = qr.assignedTo.mobile;

@@ -21,12 +21,12 @@ const salesPersonSchema = new mongoose.Schema(
     commissionType: {
       type: String,
       enum: ["fixed", "percentage"],
-      default: "fixed"
+      default: "percentage"
     },
 
     commissionValue: {
       type: Number,
-      default: 0
+      default: 8.36
     },
 
     totalEarnings: {
