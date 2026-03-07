@@ -5,6 +5,7 @@ const cors = require("cors");
 const qrRoutes = require("./routes/qrRoutes");
 const vehicleRoutes = require("./routes/vehicleRoutes");
 const startExpiryCron = require("./utils/cronJobs");
+const orderRoutes = require("./routes/orderRoutes");
 
 
 
