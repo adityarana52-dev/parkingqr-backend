@@ -13,6 +13,65 @@ const SalesPerson = require("../models/SalesPerson");
 
 console.log("QR ROUTES LOADED");
 
+// ✅ Get QR Details (Showroom + Salespersons)
+
+router.get("/details/:qrId", async (req,res)=>{
+
+        try{
+
+        const {qrId} = req.params;
+
+        const qr = await QrCode.findOne({qrId})
+        .populate("showroom");
+
+        if(!qr){
+        return res.status(404).json({
+        message:"QR not found"
+        });
+        }
+
+        let salesPersons = [];
+
+        if(qr.showroom){
+
+        salesPersons = await SalesPerson.find({
+        showroom:qr.showroom._id,
+        isActive:true
+        }).select("name");
+
+        }
+
+        res.json({
+
+        qrId:qr.qrId,
+
+        sourceType:qr.sourceType,
+
+        showroom: qr.showroom
+        ? {
+        _id: qr.showroom._id,
+        name: qr.showroom.name,
+        showroomCode: qr.showroom.showroomCode
+        }
+        : null,
+
+        salesPersons
+
+        });
+
+        }catch(error){
+
+        console.log("QR details error",error);
+
+        res.status(500).json({
+        message:"Server error"
+        });
+
+        }
+
+        });
+
+
 // GEnerate QR Code
 router.post("/generate", async (req, res) => {
   try {

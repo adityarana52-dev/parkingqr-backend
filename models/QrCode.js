@@ -18,10 +18,11 @@ const qrCodeSchema = new mongoose.Schema(
       enum: ["showroom", "retail", "direct"],
       default: "direct",
     },
-    salesPerson: {
-        type: String,
-        default: null,
-      },
+    salesPerson:{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:"SalesPerson",
+      default:null
+    },
     isAssigned: {
       type: Boolean,
       default: false,
