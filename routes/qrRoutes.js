@@ -281,7 +281,7 @@ const subscriptionAmount = user.subscriptionPrice || 299;
 
 // 🏢 Showroom Commission
 if (qr.showroom) {
-  console.log("SHOWROOM COMMISSION:", showroomCommission);
+  
 
   const showroomData = await Showroom.findById(qr.showroom._id);
 
@@ -296,7 +296,7 @@ if (qr.showroom) {
         (subscriptionAmount * showroomData.commissionValue) / 100
       );
     }
-
+        console.log("SHOWROOM COMMISSION:", showroomCommission);
     await Showroom.findByIdAndUpdate(
       showroomData._id,
       { $inc: { totalEarnings: showroomCommission } }
@@ -307,7 +307,7 @@ if (qr.showroom) {
 
 // 👨‍💼 SalesPerson Commission
 if (salesPerson && salesPerson !== "null") {
-  console.log("SALESPERSON COMMISSION:", salesCommission);
+  
 
   const spData = await SalesPerson.findById(salesPerson);
 
@@ -322,7 +322,7 @@ if (salesPerson && salesPerson !== "null") {
         (subscriptionAmount * spData.commissionValue) / 100
       );
     }
-
+      console.log("SALESPERSON COMMISSION:", salesCommission);
     await SalesPerson.findByIdAndUpdate(
       spData._id,
       { $inc: { totalEarnings: salesCommission } }
