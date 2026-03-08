@@ -678,6 +678,7 @@ router.get("/my-move-requests-count", protect, async (req, res) => {
 router.post("/generate-printable", async (req, res) => {
   try {
     const { count, sourceType = "direct", showroomId = null } = req.body;
+    const orderId = req.query.orderId || req.body.orderId;
 
     if (!count || count > 50) {
       return res.status(400).json({
