@@ -27,19 +27,26 @@ router.post("/", protect, async (req, res) => {
 
     const QrCode = require("../models/QrCode");
 
-      const qr = await QrCode.findOneAndUpdate(
-      {
-      sourceType: "direct",
-      isAssigned: false
-      },
-      {
-      isAssigned: true,
-      assignedTo: req.user._id,
-      orderId: order._id,
-      qrStatus: "assigned"
-      },
-      { new: true }
-      );
+        // find one unused direct QR
+        const qr = await QrCode.findOneAndUpdate(
+        {
+        sourceType: "direct",
+        isAssigned: false
+        },
+        {
+        isAssigned: true,
+        assignedTo: req.user._id,
+        orderId: order._id,
+        qrStatus: "assigned"
+        },
+        { new: true }
+        );
+
+        // save qrId in order
+        if (qr) {
+        order.qrId = qr.qrId;
+        await order.save();
+        }
 
 
     await assignDirectQr(order._id, userId, quantity);
