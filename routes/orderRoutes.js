@@ -21,18 +21,26 @@ router.post("/", protect, async (req, res) => {
       user: req.user._id,
       name,
       mobile,
-      address,
+      address,  
       city,
       state,
       pincode,
       quantity: quantity || 1
+
+      
     });
+
+    console.log("ORDER CREATED:", order._id);
+
+    console.log("Searching direct QR...");
 
     // find available direct QR
 const qr = await QrCode.findOne({
   sourceType: "direct",
   isAssigned: false
 }).sort({ createdAt: 1 });
+
+console.log("QR FOUND:", qr);
 
 if (!qr) {
   console.log("NO DIRECT QR AVAILABLE");
