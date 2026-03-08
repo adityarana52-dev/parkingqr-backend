@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const protect = require("../middleware/authMiddleware");
 const QrOrder = require("../models/QrOrder");
-const assignDirectQr = require("../utils/assignDirectQr");
+
 
  const QrCode = require("../models/QrCode");
 
@@ -28,28 +28,30 @@ router.post("/", protect, async (req, res) => {
       quantity: quantity || 1
     });
 
-    // 🔹 find one unused direct QR
-    const qr = await QrCode.findOneAndUpdate(
-          {
-          sourceType: "direct",
-          isAssigned: false,
-          qrStatus: "generated"
-          },
-          {
-          $set:{
-          isAssigned:true,
-          assignedTo:req.user._id,
-          orderId:order._id,
-          qrStatus:"assigned"
-          }
-          },
-          {
-          new:true,
-          sort:{createdAt:1}
-          }
-          );
+    // find available direct QR
+const qr = await QrCode.findOne({
+  sourceType: "direct",
+  isAssigned: false
+}).sort({ createdAt: 1 });
 
-         console.log("QR ASSIGNED:", qr); 
+if (!qr) {
+  console.log("NO DIRECT QR AVAILABLE");
+} else {
+
+  qr.isAssigned = true;
+  qr.assignedTo = req.user._id;
+  qr.orderId = order._id;
+  qr.qrStatus = "assigned";
+
+  await qr.save();
+
+  order.qrId = qr.qrId;
+  await order.save();
+
+  console.log("QR ASSIGNED:", qr.qrId);
+
+}
+
     // 🔹 save qrId in order
     if (qr) {
       order.qrId = qr.qrId;
