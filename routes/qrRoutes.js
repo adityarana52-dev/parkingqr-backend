@@ -894,4 +894,68 @@ message:"Server error"
 
 });
 
+
+//download user direct qr
+router.get("/download-order/:orderId", async (req,res)=>{
+
+try{
+
+const {orderId} = req.params;
+
+const savedQrs = await QrCode.find({
+qrStatus:"assigned",
+orderId:orderId
+});
+
+if(savedQrs.length === 0){
+return res.status(404).json({
+message:"No QR codes found"
+});
+}
+
+const doc = new PDFDocument({ margin:20 });
+
+res.setHeader("Content-Type","application/pdf");
+res.setHeader(
+"Content-Disposition",
+"attachment; filename=qr-stickers.pdf"
+);
+
+doc.pipe(res);
+
+const QRCode = require("qrcode");
+
+let x = 40;
+let y = 40;
+
+for(const qr of savedQrs){
+
+const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+const qrBuffer = await QRCode.toBuffer(publicUrl);
+
+doc.image(qrBuffer,x,y,{width:120});
+
+y += 140;
+
+if(y > 700){
+doc.addPage();
+y = 40;
+}
+
+}
+
+doc.end();
+
+}catch(error){
+
+console.log("Download order QR error",error);
+
+res.status(500).json({
+message:"Server error"
+});
+
+}
+
+});
+
 module.exports = router;
