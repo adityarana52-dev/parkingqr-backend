@@ -711,10 +711,19 @@ router.post("/generate-printable", async (req, res) => {
       });
     }
 
-    const savedQrs = await QrCode.find({
-        qrStatus:"assigned",
-        orderId:req.body.orderId
-        });
+    let savedQrs;
+
+      if (req.body.orderId) {
+
+      savedQrs = await QrCode.find({
+      orderId: req.body.orderId
+      });
+
+      } else {
+
+      savedQrs = qrList; // showroom generation case
+
+      }
 
     const doc = new PDFDocument({ margin: 20 });
 
