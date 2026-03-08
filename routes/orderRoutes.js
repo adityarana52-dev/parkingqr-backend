@@ -4,11 +4,14 @@ const protect = require("../middleware/authMiddleware");
 const QrOrder = require("../models/QrOrder");
 const assignDirectQr = require("../utils/assignDirectQr");
 
+ const QrCode = require("../models/QrCode");
+
 
 // ✅ Place Order
 router.post("/", protect, async (req, res) => {
   try {
-    const { name, mobile, address, city, state, pincode } = req.body;
+
+    const { name, mobile, address, city, state, pincode, quantity } = req.body;
 
     if (!name || !mobile || !address || !city || !state || !pincode) {
       return res.status(400).json({ message: "All fields required" });
@@ -25,38 +28,31 @@ router.post("/", protect, async (req, res) => {
       quantity: quantity || 1
     });
 
-    const QrCode = require("../models/QrCode");
-
-        // find one unused direct QR
-        const qr = await QrCode.findOneAndUpdate(
-        {
+    // 🔹 find one unused direct QR
+    const qr = await QrCode.findOneAndUpdate(
+      {
         sourceType: "direct",
         isAssigned: false
-        },
-        {
+      },
+      {
         isAssigned: true,
         assignedTo: req.user._id,
         orderId: order._id,
         qrStatus: "assigned"
-        },
-        { new: true }
-        );
+      },
+      { new: true }
+    );
 
-        // save qrId in order
-        if (qr) {
-        order.qrId = qr.qrId;
-        await order.save();
-        }
-
-
-    await assignDirectQr(order._id, userId, quantity);
+    // 🔹 save qrId in order
+    if (qr) {
+      order.qrId = qr.qrId;
+      await order.save();
+    }
 
     res.json({
       message: "Order placed successfully",
-      order,
+      order
     });
-
-    
 
   } catch (error) {
     console.log("Order Error:", error);
