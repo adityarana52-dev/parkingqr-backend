@@ -30,19 +30,26 @@ router.post("/", protect, async (req, res) => {
 
     // 🔹 find one unused direct QR
     const qr = await QrCode.findOneAndUpdate(
-      {
-        sourceType: "direct",
-        isAssigned: false
-      },
-      {
-        isAssigned: true,
-        assignedTo: req.user._id,
-        orderId: order._id,
-        qrStatus: "assigned"
-      },
-      { new: true }
-    );
+          {
+          sourceType: "direct",
+          isAssigned: false,
+          qrStatus: "generated"
+          },
+          {
+          $set:{
+          isAssigned:true,
+          assignedTo:req.user._id,
+          orderId:order._id,
+          qrStatus:"assigned"
+          }
+          },
+          {
+          new:true,
+          sort:{createdAt:1}
+          }
+          );
 
+         console.log("QR ASSIGNED:", qr); 
     // 🔹 save qrId in order
     if (qr) {
       order.qrId = qr.qrId;
