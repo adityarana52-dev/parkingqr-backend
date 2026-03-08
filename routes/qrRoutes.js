@@ -676,52 +676,31 @@ router.get("/my-move-requests-count", protect, async (req, res) => {
 
 
 router.get("/generate-printable", async (req, res) => {
-  try {
-    const { count, sourceType = "direct", showroomId = null } = req.body;
 
-    if (!count || count > 50) {
-      return res.status(400).json({
-        message: "Count required (max 50 per batch)",
-      });
-    }
+try {
 
-    if (sourceType === "showroom") {
-      if (!showroomId) {
-        return res.status(400).json({ message: "Showroom ID required" });
-      }
+const { orderId } = req.query;
 
-      const showroom = await Showroom.findById(showroomId);
-      if (!showroom) {
-        return res.status(404).json({ message: "Showroom not found" });
-      }
-    }
+const savedQrs = await QrCode.find({
+qrStatus: "assigned",
+orderId: orderId
+});
 
-    const PDFDocument = require("pdfkit");
-    const QRCode = require("qrcode");
+if (!savedQrs.length) {
+return res.status(404).json({
+message: "No QR found for this order"
+});
+}
 
-    const qrList = [];
+const PDFDocument = require("pdfkit");
+const QRCode = require("qrcode");
 
-    for (let i = 1; i <= count; i++) {
-      const qrId = `QR${Date.now()}${i}`;
-
-      qrList.push({
-        qrId,
-        sourceType,
-        showroom: sourceType === "showroom" ? showroomId : null,
-      });
-    }
-
-    const savedQrs = await QrCode.find({
-        qrStatus:"assigned",
-        orderId:req.query.orderId
-        });
-
-    const doc = new PDFDocument({ margin: 20 });
+const doc = new PDFDocument({ margin: 20 });
 
 res.setHeader("Content-Type", "application/pdf");
 res.setHeader(
-  "Content-Disposition",
-  "attachment; filename=parkingqr-elite-batch.pdf"
+"Content-Disposition",
+"attachment; filename=order-qr.pdf"
 );
 
 doc.pipe(res);
@@ -736,105 +715,72 @@ let countPerRow = 3;
 let itemCount = 0;
 
 for (const qr of savedQrs) {
-  const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
-  const qrBuffer = await QRCode.toBuffer(publicUrl);
 
-  // Black Background
-  doc.rect(x, y, stickerWidth, stickerHeight).fill("#0F0F0F");
+const publicUrl =
+`https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
 
-  // Outer Gold Border
-  doc
-    .lineWidth(2)
-    .strokeColor("#C6A75E")
-    .rect(x, y, stickerWidth, stickerHeight)
-    .stroke();
+const qrBuffer = await QRCode.toBuffer(publicUrl);
 
-  // Inner Gold Frame
-  doc
-    .lineWidth(1)
-    .rect(x + 6, y + 6, stickerWidth - 12, stickerHeight - 12)
-    .stroke();
+doc.rect(x, y, stickerWidth, stickerHeight).fill("#0F0F0F");
 
-  // Title
-  doc
-    .fillColor("#C6A75E")
-    .fontSize(14)
-    .font("Helvetica-Bold")
-    .text("PARKING QR", x, y + 18, {
-      width: stickerWidth,
-      align: "center",
-    });
+doc
+.lineWidth(2)
+.strokeColor("#C6A75E")
+.rect(x, y, stickerWidth, stickerHeight)
+.stroke();
 
-  // Divider Line
-  doc
-    .moveTo(x + 30, y + 40)
-    .lineTo(x + stickerWidth - 30, y + 40)
-    .strokeColor("#C6A75E")
-    .lineWidth(1)
-    .stroke();
+doc
+.lineWidth(1)
+.rect(x + 6, y + 6, stickerWidth - 12, stickerHeight - 12)
+.stroke();
 
-  // QR White Box
-  const qrBoxSize = 105;
-  const qrX = x + (stickerWidth - qrBoxSize) / 2;
-  const qrY = y + 50;
+doc
+.fillColor("#C6A75E")
+.fontSize(14)
+.font("Helvetica-Bold")
+.text("PARKING QR", x, y + 18, {
+width: stickerWidth,
+align: "center"
+});
 
-  doc.rect(qrX, qrY, qrBoxSize, qrBoxSize).fill("#FFFFFF");
+const qrBoxSize = 105;
+const qrX = x + (stickerWidth - qrBoxSize) / 2;
+const qrY = y + 50;
 
-  doc.image(qrBuffer, qrX + 6, qrY + 6, {
-    width: qrBoxSize - 12,
-  });
+doc.rect(qrX, qrY, qrBoxSize, qrBoxSize).fill("#FFFFFF");
 
-  // Bottom Text
-  doc
-    .fillColor("#C6A75E")
-    .fontSize(8)
-    .font("Helvetica")
-    .text("Scan for Owner Notification", x, y + 158, {
-      width: stickerWidth,
-      align: "center",
-    });
+doc.image(qrBuffer, qrX + 6, qrY + 6, {
+width: qrBoxSize - 12
+});
 
-  doc
-    .text("Move Request • Toeing Your Vehicle", x, y + 168, {
-      width: stickerWidth,
-      align: "center",
-    });
+itemCount++;
+x += stickerWidth + gap;
 
-  doc
-    .text("Emergency Contact Available", x, y + 178, {
-      width: stickerWidth,
-      align: "center",
-    });
+if (itemCount % countPerRow === 0) {
+x = 40;
+y += stickerHeight + gap;
+}
 
-  doc
-    .fontSize(6)
-    .fillColor("#8C7A3A")
-    .text("Premium Vehicle Contact System", x, y + 190, {
-      width: stickerWidth,
-      align: "center",
-    });
+if (y + stickerHeight > 760) {
+doc.addPage();
+x = 40;
+y = 40;
+}
 
-  itemCount++;
-  x += stickerWidth + gap;
-
-  if (itemCount % countPerRow === 0) {
-    x = 40;
-    y += stickerHeight + gap;
-  }
-
-  if (y + stickerHeight > 760) {
-    doc.addPage();
-    x = 40;
-    y = 40;
-  }
 }
 
 doc.end();
 
-  } catch (error) {
-    console.log("Printable QR Error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
+} catch (error) {
+
+console.log("Printable QR Error:", error);
+
+res.status(500).json({
+message: "Server error"
+});
+
+}
+
 });
 
 //Assigned directly to direct users
