@@ -20,6 +20,11 @@ const qrOrderSchema = new mongoose.Schema(
       default: "processing",
     },
 
+        qrId:{
+    type:String,
+    default:null
+    },
+
     paymentId: String,
 
     quantity: {
