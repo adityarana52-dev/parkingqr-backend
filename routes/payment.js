@@ -8,6 +8,7 @@ const Payment = require("../models/Payment");
 const adminMiddleware = require("../middleware/adminMiddleware");
 const QrOrder = require("../models/QrOrder");
 const sendPushNotification = require("../utils/sendPushNotification");
+const QrCode = require("../models/QrCode");
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
