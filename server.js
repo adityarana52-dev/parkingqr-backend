@@ -31,7 +31,7 @@ app.use("/api/showrooms", showroomRoutes);
 app.use("/api/qr", require("./routes/qrRoutes"));
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/payment", require("./routes/payment"));
-app.use("/api/orders", require("./routes/orderRoutes"));
+
 app.use("/api/salesperson", require("./routes/salesPersonRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 
