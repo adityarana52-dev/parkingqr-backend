@@ -675,7 +675,7 @@ router.get("/my-move-requests-count", protect, async (req, res) => {
 });
 
 
-router.post("/generate-printable", async (req, res) => {
+router.get("/generate-printable", async (req, res) => {
   try {
     const { count, sourceType = "direct", showroomId = null } = req.body;
 
@@ -713,7 +713,7 @@ router.post("/generate-printable", async (req, res) => {
 
     const savedQrs = await QrCode.find({
         qrStatus:"assigned",
-        orderId:req.body.orderId
+        orderId:req.query.orderId
         });
 
     const doc = new PDFDocument({ margin: 20 });
@@ -842,7 +842,7 @@ router.post("/assign-direct-order", async (req,res)=>{
 
 try{
 
-const {orderId,userId,quantity} = req.body;
+const {orderId,userId,quantity} = req.query;
 
 const availableQrs = await QrCode.find({
 sourceType:"direct",
