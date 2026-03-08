@@ -180,6 +180,9 @@ router.post("/create-shipping-order", authMiddleware, async (req, res) => {
 // ===============================
 router.post("/verify-shipping", authMiddleware, async (req, res) => {
   try {
+        
+
+
     const {
       razorpay_payment_id,
       razorpay_order_id,
@@ -191,6 +194,22 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
       state,
       pincode,
     } = req.body;
+
+    // 🚫 Prevent duplicate payment processing
+    const existingPayment = await Payment.findOne({
+      razorpay_payment_id
+    });
+
+    if (existingPayment) {
+
+      console.log("⚠ Duplicate shipping payment blocked");
+
+      return res.json({
+        success: true,
+        message: "Payment already processed"
+      });
+
+    }
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
 
@@ -212,17 +231,45 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
       status: "shipping-success",
     });
 
-    // ✅ Create QR Order document
-    await QrOrder.create({
-      user: req.user._id,
-      name,
-      mobile,
-      address,
-      city,
-      state,
-      pincode,
-      paymentId: razorpay_payment_id,
-    });
+   
+
+// create order
+const order = await QrOrder.create({
+  user: req.user._id,
+  name,
+  mobile,
+  address,
+  city,
+  state,
+  pincode,
+  paymentId: razorpay_payment_id,
+});
+
+      // find unused direct QR
+      const qr = await QrCode.findOne({
+        sourceType: "direct",
+        isAssigned: false
+      }).sort({ createdAt: 1 });
+
+      if (qr) {
+
+        qr.isAssigned = true;
+        qr.assignedTo = req.user._id;
+        qr.orderId = order._id;
+        qr.qrStatus = "assigned";
+
+        await qr.save();
+
+        order.qrId = qr.qrId;
+        await order.save();
+
+        console.log("QR ASSIGNED:", qr.qrId);
+
+      } else {
+
+        console.log("NO DIRECT QR AVAILABLE");
+
+      }
 
     res.json({ success: true });
 
@@ -330,6 +377,32 @@ router.get("/admin-stats", authMiddleware, adminMiddleware, async (req, res) => 
     console.error("ADMIN STATS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch stats" });
   }
+});
+
+
+// ===============================
+// 📦 ADMIN QR ORDERS LIST
+// ===============================
+router.get("/admin-orders", authMiddleware, adminMiddleware, async (req, res) => {
+
+  try {
+
+    const orders = await QrOrder.find()
+      .sort({ createdAt: -1 })
+      .populate("user", "mobile");
+
+    res.json(orders);
+
+  } catch (error) {
+
+    console.log("ADMIN ORDERS ERROR:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch orders"
+    });
+
+  }
+
 });
 
 module.exports = router;
