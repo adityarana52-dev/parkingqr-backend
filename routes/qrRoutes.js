@@ -213,9 +213,9 @@ router.post("/activate", protect, async (req, res) => {
     // 🔥 NEW BUSINESS RULE
     // Check if user already has an active QR
     const existingQr = await QrCode.findOne({
-      assignedTo: req.user._id,
-      isAssigned: true,
-    });
+        assignedTo: req.user._id,
+        qrStatus: "activated",
+      });
 
         // 🔥 Validate Sales Person if provided
     if (salesPerson) {
@@ -251,7 +251,9 @@ router.post("/activate", protect, async (req, res) => {
     // Assign QR
     qr.isAssigned = true;
     qr.qrStatus = "activated";
-    qr.assignedTo = req.user._id;
+    if (!qr.assignedTo) {
+        qr.assignedTo = req.user._id;
+}
     qr.vehicleNumber = vehicleNumber;
     qr.vehicleType = vehicleType;
     qr.salesPerson = salesPerson || null;
@@ -588,6 +590,7 @@ router.post("/move-request", async (req, res) => {
 
 
 const axios = require("axios");
+const { trusted } = require("mongoose");
 
 router.post("/call/:qrId", async (req, res) => {
   try {
@@ -600,8 +603,8 @@ router.post("/call/:qrId", async (req, res) => {
 
     const qr = await QrCode.findOne({ qrId }).populate("assignedTo");
 
-    if (!qr || !qr.assignedTo) {
-      return res.status(400).json({ message: "This QR is already activated with another vehicle" });
+    if (qr.qrStatus === "activated") {
+      return res.status(400).json({ message: "QR already activated" });
     }
 
     const ownerNumber = qr.assignedTo.mobile;
@@ -856,8 +859,8 @@ const {orderId,userId,quantity} = req.body;
 
 const availableQrs = await QrCode.find({
 sourceType:"direct",
-qrStatus:"generated",
-isAssigned:false
+qrStatus:"assigned",
+isAssigned:true
 }).limit(quantity);
 
 if(availableQrs.length < quantity){
