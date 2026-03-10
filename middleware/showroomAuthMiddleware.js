@@ -1,18 +1,21 @@
 const jwt = require("jsonwebtoken");
-const Showroom = require("../models/Showroom");
 
 const protectShowroom = (req, res, next) => {
   try {
 
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "No token provided" });
+    if (!authHeader) {
+      return res.status(401).json({ message: "No token" });
+    }
+
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Invalid token format" });
     }
 
     const token = authHeader.split(" ")[1];
 
-    if (!token) {
+    if (!token || token === "null" || token === "undefined") {
       return res.status(401).json({ message: "Invalid token" });
     }
 
