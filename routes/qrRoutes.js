@@ -206,7 +206,17 @@ router.post("/activate", protect, async (req, res) => {
       return res.status(404).json({ message: "QR not found" });
     }
 
-    if (qr.isAssigned) {
+    // 🔐 Security check – QR belongs to this user or is unassigned
+        if (
+          qr.assignedTo &&
+          qr.assignedTo.toString() !== req.user._id.toString()
+        ) {
+          return res.status(403).json({
+            message: "This QR belongs to another user",
+          });
+        }
+
+    if (qr.qrStatus === "activated") {
       return res.status(400).json({ message: "QR already activated" });
     }
 
@@ -253,7 +263,7 @@ router.post("/activate", protect, async (req, res) => {
     qr.qrStatus = "activated";
     if (!qr.assignedTo) {
         qr.assignedTo = req.user._id;
-}
+      }
     qr.vehicleNumber = vehicleNumber;
     qr.vehicleType = vehicleType;
     qr.salesPerson = salesPerson || null;
@@ -590,7 +600,6 @@ router.post("/move-request", async (req, res) => {
 
 
 const axios = require("axios");
-const { trusted } = require("mongoose");
 
 router.post("/call/:qrId", async (req, res) => {
   try {
@@ -603,8 +612,8 @@ router.post("/call/:qrId", async (req, res) => {
 
     const qr = await QrCode.findOne({ qrId }).populate("assignedTo");
 
-    if (qr.qrStatus === "activated") {
-      return res.status(400).json({ message: "QR already activated" });
+    if (!qr || !qr.assignedTo) {
+      return res.status(400).json({ message: "This QR is already activated with another vehicle" });
     }
 
     const ownerNumber = qr.assignedTo.mobile;
@@ -851,49 +860,58 @@ doc.end();
 });
 
 //Assigned directly to direct users
-router.post("/assign-direct-order", async (req,res)=>{
+router.post("/assign-direct-order", async (req, res) => {
 
-try{
+  try {
 
-const {orderId,userId,quantity} = req.body;
+    const { orderId, userId, quantity } = req.body;
 
-const availableQrs = await QrCode.find({
-sourceType:"direct",
-qrStatus:"assigned",
-isAssigned:true
-}).limit(quantity);
+    if (!orderId || !userId || !quantity) {
+      return res.status(400).json({
+        message: "orderId, userId and quantity required"
+      });
+    }
 
-if(availableQrs.length < quantity){
-return res.status(400).json({
-message:"Not enough QR stock"
-});
-}
+    // 🔎 Find available direct QR
+    const availableQrs = await QrCode.find({
+      sourceType: "direct",
+      qrStatus: "generated",
+      isAssigned: false
+    }).limit(quantity);
 
-const qrIds = availableQrs.map(q=>q._id);
+    if (availableQrs.length < quantity) {
+      return res.status(400).json({
+        message: "Not enough QR stock"
+      });
+    }
 
-await QrCode.updateMany(
-{_id:{$in:qrIds}},
-{
-orderId,
-assignedTo:userId,
-qrStatus:"assigned"
-}
-);
+    const qrIds = availableQrs.map(q => q._id);
 
-res.json({
-message:"QR assigned successfully",
-qrIds
-});
+    // 🔥 Assign QR to user order
+    await QrCode.updateMany(
+      { _id: { $in: qrIds } },
+      {
+        assignedTo: userId,
+        orderId: orderId,
+        qrStatus: "assigned",
+        isAssigned: true
+      }
+    );
 
-}catch(error){
+    res.json({
+      message: "QR assigned successfully",
+      assignedCount: qrIds.length
+    });
 
-console.log("Assign direct QR error",error);
+  } catch (error) {
 
-res.status(500).json({
-message:"Server error"
-});
+    console.log("Assign direct QR error:", error);
 
-}
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
 
 });
 
