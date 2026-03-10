@@ -144,7 +144,7 @@ router.get("/sales-analytics/:showroomId", async (req, res) => {
 router.get("/dashboard", protectShowroom, async (req, res) => {
   try {
 
-    const showroomId = req.showroom._id;
+    const showroomId = req.showroom.id;
 
     const showroom = await Showroom.findById(showroomId);
 
