@@ -11,7 +11,7 @@ router.post("/create", protectShowroom, async (req, res) => {
 
     const { name, mobile } = req.body;
 
-    const showroomId = req.showroom._id;
+    const showroomId = req.showroom.id;
 
     if (!name) {
       return res.status(400).json({
@@ -43,7 +43,7 @@ router.get("/my-team", protectShowroom, async (req, res) => {
   try {
 
     const salesPersons = await SalesPerson.find({
-      showroom: req.showroom._id,
+      showroom: req.showroom.id,
       isActive: true
     }).select("name mobile totalActivations totalEarnings");
 
@@ -70,7 +70,7 @@ router.patch("/deactivate/:id", protectShowroom, async (req, res) => {
     const salesPerson = await SalesPerson.findOneAndUpdate(
       {
         _id: id,
-        showroom: req.showroom._id
+        showroom: req.showroom.id
       },
       { isActive: false },
       { new: true }
@@ -117,28 +117,7 @@ router.get("/by-showroom/:showroomId", async (req, res) => {
 });
 
 
-// ✅ Deactivate Sales Person (Soft Delete)
-router.patch("/deactivate/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
 
-    const salesPerson = await SalesPerson.findByIdAndUpdate(
-      id,
-      { isActive: false },
-      { new: true }
-    );
-
-    if (!salesPerson) {
-      return res.status(404).json({ message: "Sales person not found" });
-    }
-
-    res.json({ message: "Sales person deactivated" });
-
-  } catch (error) {
-    console.log("Deactivate SalesPerson Error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
 
 router.delete("/delete/:id", async (req, res) => {

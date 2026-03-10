@@ -289,7 +289,7 @@ router.post("/request-qr", protectShowroom, async (req, res) => {
     }
 
     const request = await QrRequest.create({
-      showroom: req.showroom._id,
+      showroom: req.showroom.id,
       quantity
     });
 
@@ -316,7 +316,7 @@ router.get("/qr-requests", protectShowroom, async (req, res) => {
   try {
 
     const requests = await QrRequest.find({
-      showroom: req.showroom._id
+      showroom: req.showroom.id
     })
     .sort({ createdAt: -1 });
 
