@@ -244,7 +244,7 @@ router.get("/qr-stock", protectShowroom, async (req, res) => {
 
   try {
 
-    const showroomId = req.showroom._id;
+    const showroomId = req.showroom.id;
 
     const totalAllocated = await QrCode.countDocuments({
       showroom: showroomId
