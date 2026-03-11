@@ -9,6 +9,10 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const protectShowroom = require("../middleware/showroomAuthMiddleware");
 const QrRequest = require("../models/QrRequest");
+const sendPushNotification = require("../utils/sendPushNotification");
+const ShowroomNotification = require("../models/ShowroomNotification");
+const User = require("../models/User");
+
 
 
 // ✅ Create Showroom
@@ -331,6 +335,80 @@ router.get("/qr-requests", protectShowroom, async (req, res) => {
     });
 
   }
+
+});
+
+//Send offer
+router.post("/send-offer", protectShowroom, async (req,res)=>{
+
+try{
+
+const {message} = req.body;
+
+if(!message){
+return res.status(400).json({
+message:"Message required"
+});
+}
+
+const now = new Date();
+const month = now.getMonth();
+const year = now.getFullYear();
+
+const count = await ShowroomNotification.countDocuments({
+showroom:req.showroom.id,
+month,
+year
+});
+
+if(count >= 2){
+return res.status(400).json({
+message:"Monthly limit reached (2 notifications)"
+});
+}
+
+// find QR users activated from this showroom
+const qrs = await QrCode.find({
+showroom:req.showroom.id,
+isAssigned:true
+}).populate("assignedTo");
+
+for(const qr of qrs){
+
+if(qr.assignedTo?.expoPushToken){
+
+await sendPushNotification(
+qr.assignedTo.expoPushToken,
+"🏪 Showroom Offer",
+message,
+{type:"offer"}
+);
+
+}
+
+}
+
+// save notification
+await ShowroomNotification.create({
+showroom:req.showroom.id,
+message,
+month,
+year
+});
+
+res.json({
+message:"Offer notification sent"
+});
+
+}catch(error){
+
+console.log("Send offer error",error);
+
+res.status(500).json({
+message:"Server error"
+});
+
+}
 
 });
 
