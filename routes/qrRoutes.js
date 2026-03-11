@@ -191,7 +191,7 @@ router.post("/activate", protect, async (req, res) => {
     }
 
 
-    const { qrId, vehicleNumber, vehicleType, salesPerson, insuranceStartDate, lastServiceDate } = req.body;
+    const { qrId, vehicleNumber, vehicleType, salesPerson, insuranceDate, serviceDate } = req.body;
 
     if (!qrId || !vehicleNumber) {
       return res.status(400).json({
@@ -201,6 +201,8 @@ router.post("/activate", protect, async (req, res) => {
 
     // Find QR
     const qr = await QrCode.findOne({ qrId }).populate("showroom");
+
+   
 
     if (!qr) {
       return res.status(404).json({ message: "QR not found" });
@@ -266,10 +268,10 @@ router.post("/activate", protect, async (req, res) => {
       }
     qr.vehicleNumber = vehicleNumber;
     qr.vehicleType = vehicleType;
-      qr.insuranceStartDate = insuranceStartDate || null;
+      qr.insuranceStartDate = insuranceDate || null;
       qr.insuranceExpiryDate = insuranceExpiryDate;
 
-      qr.lastServiceDate = lastServiceDate || null;
+      qr.lastServiceDate = serviceDate || null;
       qr.nextServiceDate = nextServiceDate;
 
     qr.salesPerson = salesPerson || null;
@@ -278,23 +280,23 @@ router.post("/activate", protect, async (req, res) => {
      let insuranceExpiryDate = null;
         let nextServiceDate = null;
 
-        if (insuranceStartDate) {
+        if (insuranceDate) {
 
-        const start = new Date(insuranceStartDate);
+          const start = new Date(insuranceDate);
 
-        insuranceExpiryDate = new Date(start);
+          insuranceExpiryDate = new Date(start);
 
-        insuranceExpiryDate.setFullYear(start.getFullYear() + 1);
+          insuranceExpiryDate.setFullYear(start.getFullYear() + 1);
 
         }
 
-        if (lastServiceDate) {
+        if (serviceDate) {
 
-        const service = new Date(lastServiceDate);
+          const service = new Date(serviceDate);
 
-        nextServiceDate = new Date(service);
+          nextServiceDate = new Date(service);
 
-        nextServiceDate.setMonth(service.getMonth() + 6);
+          nextServiceDate.setMonth(service.getMonth() + 6);
 
         }
 
