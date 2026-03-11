@@ -34,6 +34,7 @@ app.use("/api/payment", require("./routes/payment"));
 
 app.use("/api/salesperson", require("./routes/salesPersonRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+require("./utils/reminderCron");
 
 
 app.get("/", (req, res) => {
