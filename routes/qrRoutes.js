@@ -260,45 +260,51 @@ router.post("/activate", protect, async (req, res) => {
       });
     }
 
-    // Assign QR
-    qr.isAssigned = true;
-    qr.qrStatus = "activated";
-    if (!qr.assignedTo) {
-        qr.assignedTo = req.user._id;
-      }
-    qr.vehicleNumber = vehicleNumber;
-    qr.vehicleType = vehicleType;
-      qr.insuranceStartDate = insuranceDate || null;
-      qr.insuranceExpiryDate = insuranceExpiryDate;
+    // dates calculate first
 
-      qr.lastServiceDate = serviceDate || null;
-      qr.nextServiceDate = nextServiceDate;
+          let insuranceExpiryDate = null;
+          let nextServiceDate = null;
 
-    qr.salesPerson = salesPerson || null;
+          if (insuranceDate) {
+
+            const start = new Date(insuranceDate);
+
+            insuranceExpiryDate = new Date(start);
+
+            insuranceExpiryDate.setFullYear(start.getFullYear() + 1);
+
+          }
+
+          if (serviceDate) {
+
+            const service = new Date(serviceDate);
+
+            nextServiceDate = new Date(service);
+
+            nextServiceDate.setMonth(service.getMonth() + 6);
+
+          }
 
 
-     let insuranceExpiryDate = null;
-        let nextServiceDate = null;
+          // now assign values
 
-        if (insuranceDate) {
+          qr.isAssigned = true;
+          qr.qrStatus = "activated";
 
-          const start = new Date(insuranceDate);
+          if (!qr.assignedTo) {
+            qr.assignedTo = req.user._id;
+          }
 
-          insuranceExpiryDate = new Date(start);
+          qr.vehicleNumber = vehicleNumber;
+          qr.vehicleType = vehicleType;
 
-          insuranceExpiryDate.setFullYear(start.getFullYear() + 1);
+          qr.insuranceStartDate = insuranceDate || null;
+          qr.insuranceExpiryDate = insuranceExpiryDate;
 
-        }
+          qr.lastServiceDate = serviceDate || null;
+          qr.nextServiceDate = nextServiceDate;
 
-        if (serviceDate) {
-
-          const service = new Date(serviceDate);
-
-          nextServiceDate = new Date(service);
-
-          nextServiceDate.setMonth(service.getMonth() + 6);
-
-        }
+          qr.salesPerson = salesPerson || null;
 
     await qr.save();
 
