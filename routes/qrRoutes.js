@@ -191,7 +191,7 @@ router.post("/activate", protect, async (req, res) => {
     }
 
 
-    const { qrId, vehicleNumber, vehicleType, salesPerson } = req.body;
+    const { qrId, vehicleNumber, vehicleType, salesPerson, insuranceStartDate, lastServiceDate } = req.body;
 
     if (!qrId || !vehicleNumber) {
       return res.status(400).json({
@@ -266,7 +266,37 @@ router.post("/activate", protect, async (req, res) => {
       }
     qr.vehicleNumber = vehicleNumber;
     qr.vehicleType = vehicleType;
+      qr.insuranceStartDate = insuranceStartDate || null;
+      qr.insuranceExpiryDate = insuranceExpiryDate;
+
+      qr.lastServiceDate = lastServiceDate || null;
+      qr.nextServiceDate = nextServiceDate;
+
     qr.salesPerson = salesPerson || null;
+
+
+     let insuranceExpiryDate = null;
+        let nextServiceDate = null;
+
+        if (insuranceStartDate) {
+
+        const start = new Date(insuranceStartDate);
+
+        insuranceExpiryDate = new Date(start);
+
+        insuranceExpiryDate.setFullYear(start.getFullYear() + 1);
+
+        }
+
+        if (lastServiceDate) {
+
+        const service = new Date(lastServiceDate);
+
+        nextServiceDate = new Date(service);
+
+        nextServiceDate.setMonth(service.getMonth() + 6);
+
+        }
 
     await qr.save();
 

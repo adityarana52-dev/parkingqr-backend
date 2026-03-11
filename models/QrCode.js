@@ -42,6 +42,26 @@ const qrCodeSchema = new mongoose.Schema(
       default: null,
     },
 
+        insuranceStartDate: {
+      type: Date,
+      default: null
+    },
+
+    insuranceExpiryDate: {
+      type: Date,
+      default: null
+    },
+
+    lastServiceDate: {
+      type: Date,
+      default: null
+    },
+
+    nextServiceDate: {
+      type: Date,
+      default: null
+    },
+
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "QrOrder",

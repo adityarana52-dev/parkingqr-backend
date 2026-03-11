@@ -412,4 +412,28 @@ message:"Server error"
 
 });
 
+
+//offer to send message from showroom
+router.get("/offer-count", protectShowroom, async (req,res)=>{
+
+try{
+
+const now = new Date();
+
+const count = await ShowroomNotification.countDocuments({
+showroom:req.showroom.id,
+month:now.getMonth(),
+year:now.getFullYear()
+});
+
+res.json({count});
+
+}catch(error){
+
+res.status(500).json({message:"Error"});
+
+}
+
+});
+
 module.exports = router;
