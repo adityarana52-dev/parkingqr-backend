@@ -436,4 +436,179 @@ res.status(500).json({message:"Error"});
 
 });
 
+//insurance due check
+router.get("/insurance-due", protectShowroom, async (req,res)=>{
+
+try{
+
+const showroomId = req.showroom.id;
+
+const today = new Date();
+
+const limit = new Date();
+limit.setDate(today.getDate()+30);
+
+const qrs = await QrCode.find({
+showroom:showroomId,
+insuranceExpiryDate:{$lte:limit,$gte:today}
+});
+
+res.json(qrs);
+
+}catch(error){
+
+console.log("Insurance due error",error);
+
+res.status(500).json({message:"Server error"});
+
+}
+
+});
+
+
+//Service due
+router.get("/service-due", protectShowroom, async (req,res)=>{
+
+try{
+
+const showroomId = req.showroom.id;
+
+const today = new Date();
+
+const limit = new Date();
+limit.setDate(today.getDate()+30);
+
+const qrs = await QrCode.find({
+showroom:showroomId,
+nextServiceDate:{$lte:limit,$gte:today}
+});
+
+res.json(qrs);
+
+}catch(error){
+
+console.log("Service due error",error);
+
+res.status(500).json({message:"Server error"});
+
+}
+
+});
+
+
+//Send reminder
+router.post("/send-insurance-reminder", protectShowroom, async (req,res)=>{
+
+try{
+
+const showroomId = req.showroom.id;
+
+const today = new Date();
+
+const limit = new Date();
+limit.setDate(today.getDate()+30);
+
+const qrs = await QrCode.find({
+showroom:showroomId,
+insuranceExpiryDate:{$lte:limit,$gte:today}
+})
+.populate("assignedTo")
+.populate("showroom");
+
+let count = 0;
+
+for(const qr of qrs){
+
+if(qr.assignedTo?.expoPushToken){
+
+await sendPushNotification(
+
+qr.assignedTo.expoPushToken,
+
+`${qr.showroom.name}`,
+
+`Insurance renewal available for vehicle ${qr.vehicleNumber}.
+
+Visit ${qr.showroom.name} for assistance.`,
+
+{type:"insurance"}
+
+);
+
+count++;
+
+}
+
+}
+
+res.json({message:"Reminder sent",total:count});
+
+}catch(error){
+
+console.log("Send insurance reminder error",error);
+
+res.status(500).json({message:"Server error"});
+
+}
+
+});
+
+
+//Send service reminder
+router.post("/send-service-reminder", protectShowroom, async (req,res)=>{
+
+try{
+
+const showroomId = req.showroom.id;
+
+const today = new Date();
+
+const limit = new Date();
+limit.setDate(today.getDate()+30);
+
+const qrs = await QrCode.find({
+showroom:showroomId,
+nextServiceDate:{$lte:limit,$gte:today}
+})
+.populate("assignedTo")
+.populate("showroom");
+
+let count = 0;
+
+for(const qr of qrs){
+
+if(qr.assignedTo?.expoPushToken){
+
+await sendPushNotification(
+
+qr.assignedTo.expoPushToken,
+
+`${qr.showroom.name}`,
+
+`Vehicle ${qr.vehicleNumber} service is due.
+
+Visit ${qr.showroom.name} for quick service.`,
+
+{type:"service"}
+
+);
+
+count++;
+
+}
+
+}
+
+res.json({message:"Reminder sent",total:count});
+
+}catch(error){
+
+console.log("Send service reminder error",error);
+
+res.status(500).json({message:"Server error"});
+
+}
+
+});
+
 module.exports = router;
