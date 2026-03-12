@@ -499,7 +499,10 @@ res.status(500).json({message:"Server error"});
 //Send reminder
 router.post("/send-insurance-reminder", protectShowroom, async (req,res)=>{
 
+  
 try{
+
+const { message = "" } = req.body;  
 
 const showroomId = req.showroom.id;
 
@@ -525,13 +528,11 @@ await sendPushNotification(
 
 qr.assignedTo.expoPushToken,
 
-`${qr.showroom.name}`,
+`${qr.showroom.name} Insurance Reminder`,
 
-`Insurance renewal available for vehicle ${qr.vehicleNumber}.
+message || `Insurance for ${qr.vehicleNumber} is expiring soon.`,
 
-Visit ${qr.showroom.name} for assistance.`,
-
-{type:"insurance"}
+{ type: "insurance-reminder" }
 
 );
 
@@ -557,7 +558,10 @@ res.status(500).json({message:"Server error"});
 //Send service reminder
 router.post("/send-service-reminder", protectShowroom, async (req,res)=>{
 
+  
 try{
+
+const { message = "" } = req.body;  
 
 const showroomId = req.showroom.id;
 
@@ -583,13 +587,11 @@ await sendPushNotification(
 
 qr.assignedTo.expoPushToken,
 
-`${qr.showroom.name}`,
+`${qr.showroom.name} Service Reminder`,
 
-`Vehicle ${qr.vehicleNumber} service is due.
+message || `Vehicle ${qr.vehicleNumber} service is due.`,
 
-Visit ${qr.showroom.name} for quick service.`,
-
-{type:"service"}
+{ type: "service-reminder" }
 
 );
 
