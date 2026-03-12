@@ -436,7 +436,10 @@ res.status(500).json({message:"Error"});
 
 });
 
-//insurance due check
+// ============================
+// Insurance Due Vehicles
+// ============================
+
 router.get("/insurance-due", protectShowroom, async (req,res)=>{
 
 try{
@@ -445,15 +448,23 @@ const showroomId = req.showroom.id;
 
 const today = new Date();
 
-const limit = new Date();
-limit.setDate(today.getDate()+30);
+// 7 days past
+const pastLimit = new Date();
+pastLimit.setDate(today.getDate() - 7);
 
-const qrs = await QrCode.find({
-showroom:showroomId,
-insuranceExpiryDate:{$lte:limit,$gte:today}
-});
+// 30 days future
+const futureLimit = new Date();
+futureLimit.setDate(today.getDate() + 30);
 
-res.json(qrs);
+const vehicles = await QrCode.find({
+showroom: showroomId,
+insuranceExpiryDate: { $gte: pastLimit, $lte: futureLimit }
+})
+.populate("assignedTo")
+.populate("showroom")
+.sort({ insuranceExpiryDate: 1 });
+
+res.json(vehicles);
 
 }catch(error){
 
@@ -466,7 +477,10 @@ res.status(500).json({message:"Server error"});
 });
 
 
-//Service due
+// ============================
+// Service Due Vehicles
+// ============================
+
 router.get("/service-due", protectShowroom, async (req,res)=>{
 
 try{
@@ -475,15 +489,23 @@ const showroomId = req.showroom.id;
 
 const today = new Date();
 
-const limit = new Date();
-limit.setDate(today.getDate()+30);
+// 7 days past
+const pastLimit = new Date();
+pastLimit.setDate(today.getDate() - 7);
 
-const qrs = await QrCode.find({
-showroom:showroomId,
-nextServiceDate:{$lte:limit,$gte:today}
-});
+// 30 days future
+const futureLimit = new Date();
+futureLimit.setDate(today.getDate() + 30);
 
-res.json(qrs);
+const vehicles = await QrCode.find({
+showroom: showroomId,
+nextServiceDate: { $gte: pastLimit, $lte: futureLimit }
+})
+.populate("assignedTo")
+.populate("showroom")
+.sort({ nextServiceDate: 1 });
+
+res.json(vehicles);
 
 }catch(error){
 
@@ -496,27 +518,34 @@ res.status(500).json({message:"Server error"});
 });
 
 
-//Send reminder
+// ============================
+// Send Insurance Reminder
+// ============================
+
 router.post("/send-insurance-reminder", protectShowroom, async (req,res)=>{
 
-  
 try{
 
-const { message = "" } = req.body;  
+const { message = "" } = req.body;
 
 const showroomId = req.showroom.id;
 
 const today = new Date();
 
-const limit = new Date();
-limit.setDate(today.getDate()+30);
+// limits
+const pastLimit = new Date();
+pastLimit.setDate(today.getDate() - 7);
+
+const futureLimit = new Date();
+futureLimit.setDate(today.getDate() + 30);
 
 const qrs = await QrCode.find({
-showroom:showroomId,
-insuranceExpiryDate:{$lte:limit,$gte:today}
+showroom: showroomId,
+insuranceExpiryDate: { $gte: pastLimit, $lte: futureLimit }
 })
 .populate("assignedTo")
-.populate("showroom");
+.populate("showroom")
+.sort({ insuranceExpiryDate: 1 });
 
 let count = 0;
 
@@ -528,9 +557,9 @@ await sendPushNotification(
 
 qr.assignedTo.expoPushToken,
 
-`${qr.showroom.name} Insurance Reminder`,
+`${qr.showroom?.name || "Vehicle Reminder"} Insurance Reminder`,
 
-message || `Insurance for ${qr.vehicleNumber} is expiring soon.`,
+message || `Insurance for vehicle ${qr.vehicleNumber} is expiring soon. Please visit ${qr.showroom?.name || "our showroom"} for renewal.`,
 
 { type: "insurance-reminder" }
 
@@ -542,7 +571,10 @@ count++;
 
 }
 
-res.json({message:"Reminder sent",total:count});
+res.json({
+message:"Insurance reminders sent",
+total:count
+});
 
 }catch(error){
 
@@ -555,27 +587,34 @@ res.status(500).json({message:"Server error"});
 });
 
 
-//Send service reminder
+// ============================
+// Send Service Reminder
+// ============================
+
 router.post("/send-service-reminder", protectShowroom, async (req,res)=>{
 
-  
 try{
 
-const { message = "" } = req.body;  
+const { message = "" } = req.body;
 
 const showroomId = req.showroom.id;
 
 const today = new Date();
 
-const limit = new Date();
-limit.setDate(today.getDate()+30);
+// limits
+const pastLimit = new Date();
+pastLimit.setDate(today.getDate() - 7);
+
+const futureLimit = new Date();
+futureLimit.setDate(today.getDate() + 30);
 
 const qrs = await QrCode.find({
-showroom:showroomId,
-nextServiceDate:{$lte:limit,$gte:today}
+showroom: showroomId,
+nextServiceDate: { $gte: pastLimit, $lte: futureLimit }
 })
 .populate("assignedTo")
-.populate("showroom");
+.populate("showroom")
+.sort({ nextServiceDate: 1 });
 
 let count = 0;
 
@@ -587,9 +626,9 @@ await sendPushNotification(
 
 qr.assignedTo.expoPushToken,
 
-`${qr.showroom.name} Service Reminder`,
+`${qr.showroom?.name || "Vehicle Reminder"} Service Reminder`,
 
-message || `Vehicle ${qr.vehicleNumber} service is due.`,
+message || `Vehicle ${qr.vehicleNumber} service is due. Please visit ${qr.showroom?.name || "our showroom"} for service.`,
 
 { type: "service-reminder" }
 
@@ -601,7 +640,10 @@ count++;
 
 }
 
-res.json({message:"Reminder sent",total:count});
+res.json({
+message:"Service reminders sent",
+total:count
+});
 
 }catch(error){
 
