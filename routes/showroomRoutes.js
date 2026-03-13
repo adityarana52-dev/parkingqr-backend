@@ -11,6 +11,7 @@ const protectShowroom = require("../middleware/showroomAuthMiddleware");
 const QrRequest = require("../models/QrRequest");
 const sendPushNotification = require("../utils/sendPushNotification");
 const ShowroomNotification = require("../models/ShowroomNotification");
+const OfferLog = require("../models/OfferLog");
 const User = require("../models/User");
 
 const ReminderLog = require("../models/ReminderLog");
