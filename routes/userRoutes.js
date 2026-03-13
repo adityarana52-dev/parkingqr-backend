@@ -7,6 +7,7 @@ const sendPushNotification = require("../utils/sendPushNotification");
 const OfferLog = require("../models/OfferLog");
 const Showroom = require("../models/Showroom");
 const QrCode = require("../models/QrCode");
+const authMiddleware = require("../middleware/authMiddleware");
 
 router.put("/subscribe", protect, activateSubscription);
 
