@@ -351,12 +351,16 @@ message:"Message required"
 });
 }
 
+const showroomId = req.showroom.id;
+
 const now = new Date();
 const month = now.getMonth();
 const year = now.getFullYear();
 
+
+// check monthly limit
 const count = await ShowroomNotification.countDocuments({
-showroom:req.showroom.id,
+showroom:showroomId,
 month,
 year
 });
@@ -367,43 +371,54 @@ message:"Monthly limit reached (2 notifications)"
 });
 }
 
-// find QR users activated from this showroom
+
+// find showroom users
 const qrs = await QrCode.find({
-showroom:req.showroom.id,
+showroom:showroomId,
 isAssigned:true
 }).populate("assignedTo");
 
-for(const qr of qrs){
 
-if(qr.assignedTo?.expoPushToken){
+// filter users with token
+const users = qrs.filter(qr => qr.assignedTo?.expoPushToken);
 
-await sendPushNotification(
+
+// send push notifications (FAST)
+await Promise.all(
+
+users.map(qr =>
+sendPushNotification(
 qr.assignedTo.expoPushToken,
 "🏪 Showroom Offer",
 message,
 {type:"offer"}
+)
+)
+
 );
 
-await OfferLog.create({
-showroomId:showroomId,
-message:message
-});
 
-}
-
-}
-
-// save notification
+// save notification record
 await ShowroomNotification.create({
-showroom:req.showroom.id,
+showroom:showroomId,
 message,
 month,
 year
 });
 
-res.json({
-message:"Offer notification sent"
+
+// save offer history (only once)
+await OfferLog.create({
+showroomId:showroomId,
+message:message
 });
+
+
+res.json({
+message:"Offer notification sent",
+totalUsers:users.length
+});
+
 
 }catch(error){
 
