@@ -20,6 +20,13 @@ const userSchema = new mongoose.Schema(
   type: String,
 },
 
+city:{
+type:String,
+lowercase:true,
+trim:true,
+default:null
+},
+
   role: {
       type: String,
       enum: ["user", "admin"],

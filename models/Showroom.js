@@ -10,7 +10,9 @@ const showroomSchema = new mongoose.Schema(
     city: {
       type: String,
       required: true,
-    },
+      lowercase:true,
+      trim:true
+      },
 
     // 🔥 NEW - State Code (MP, DL, MH etc.)
     stateCode: {
