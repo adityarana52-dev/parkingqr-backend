@@ -361,11 +361,13 @@ startOfMonth.setDate(1);
 startOfMonth.setHours(0,0,0,0);
 
 
-// check monthly limit
+// monthly limit check
 const count = await OfferLog.countDocuments({
 showroomId:showroomId,
 createdAt:{ $gte:startOfMonth }
 });
+
+console.log("Monthly offer count:",count);
 
 if(count >= 2){
 return res.status(400).json({
@@ -381,11 +383,11 @@ isAssigned:true
 }).populate("assignedTo");
 
 
-// users with push token
+// filter users with token
 const users = qrs.filter(qr => qr.assignedTo?.expoPushToken);
 
 
-// send push notifications (parallel)
+// send notifications
 await Promise.all(
 
 users.map(qr =>
@@ -407,7 +409,7 @@ message:message
 });
 
 
-res.json({
+return res.json({
 message:"Offer sent successfully",
 totalUsers:users.length
 });
@@ -416,7 +418,7 @@ totalUsers:users.length
 
 console.log("Send offer error",error);
 
-res.status(500).json({
+return res.status(500).json({
 message:"Server error"
 });
 
@@ -445,11 +447,7 @@ res.json({count});
 
 }catch(error){
 
-console.log("Offer count error",error);
-
-res.status(500).json({
-message:"Server error"
-});
+res.status(500).json({message:"Server error"});
 
 }
 
