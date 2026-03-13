@@ -1,0 +1,14 @@
+const mongoose = require("mongoose");
+
+const offerSchema = new mongoose.Schema({
+
+showroomId:{
+type:mongoose.Schema.Types.ObjectId,
+ref:"Showroom"
+},
+
+message:String
+
+},{timestamps:true});
+
+module.exports = mongoose.model("OfferLog",offerSchema);

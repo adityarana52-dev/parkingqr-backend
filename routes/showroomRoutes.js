@@ -13,7 +13,7 @@ const sendPushNotification = require("../utils/sendPushNotification");
 const ShowroomNotification = require("../models/ShowroomNotification");
 const User = require("../models/User");
 
-
+const ReminderLog = require("../models/ReminderLog");
 
 // ✅ Create Showroom
 // ✅ Create Showroom (State Wise Auto Code)
@@ -384,6 +384,11 @@ message,
 {type:"offer"}
 );
 
+await OfferLog.create({
+showroomId:showroomId,
+message:message
+});
+
 }
 
 }
@@ -526,9 +531,31 @@ router.post("/send-insurance-reminder", protectShowroom, async (req,res)=>{
 
 try{
 
+
+
+
 const { message = "" } = req.body;
 
 const showroomId = req.showroom.id;
+
+
+const todayStart = new Date();
+todayStart.setHours(0,0,0,0);
+
+const todayEnd = new Date();
+todayEnd.setHours(23,59,59,999);
+
+const todayReminderCount = await ReminderLog.countDocuments({
+showroomId:req.showroom.id,
+type:"insurance",
+createdAt:{ $gte: todayStart, $lte: todayEnd }
+});
+
+if(todayReminderCount >= 2){
+return res.status(400).json({
+message:"Daily reminder limit reached (2 per day)"
+});
+}
 
 const today = new Date();
 
@@ -571,6 +598,13 @@ count++;
 
 }
 
+// save log
+await ReminderLog.create({
+showroomId:showroomId,
+type:"insurance",
+message:message
+});
+
 res.json({
 message:"Insurance reminders sent",
 total:count
@@ -598,6 +632,27 @@ try{
 const { message = "" } = req.body;
 
 const showroomId = req.showroom.id;
+
+const todayStart = new Date();
+todayStart.setHours(0,0,0,0);
+
+const todayEnd = new Date();
+todayEnd.setHours(23,59,59,999);
+
+// check today reminders
+const todayReminderCount = await ReminderLog.countDocuments({
+showroomId:showroomId,
+type:"service",
+createdAt:{ $gte: todayStart, $lte: todayEnd }
+});
+
+if(todayReminderCount >= 2){
+
+return res.status(400).json({
+message:"Daily service reminder limit reached (2 per day)"
+});
+
+}
 
 const today = new Date();
 
@@ -640,6 +695,14 @@ count++;
 
 }
 
+// save log
+await ReminderLog.create({
+showroomId:showroomId,
+type:"service",
+message:message
+});
+
+
 res.json({
 message:"Service reminders sent",
 total:count
@@ -648,6 +711,81 @@ total:count
 }catch(error){
 
 console.log("Send service reminder error",error);
+
+res.status(500).json({message:"Server error"});
+
+}
+
+});
+
+
+
+// ============================
+// Get Today Reminder Count
+// ============================
+
+router.get("/reminder-count", protectShowroom, async (req,res)=>{
+
+try{
+
+const showroomId = req.showroom.id;
+
+const todayStart = new Date();
+todayStart.setHours(0,0,0,0);
+
+const todayEnd = new Date();
+todayEnd.setHours(23,59,59,999);
+
+const insuranceCount = await ReminderLog.countDocuments({
+showroomId:showroomId,
+type:"insurance",
+createdAt:{ $gte: todayStart, $lte: todayEnd }
+});
+
+const serviceCount = await ReminderLog.countDocuments({
+showroomId:showroomId,
+type:"service",
+createdAt:{ $gte: todayStart, $lte: todayEnd }
+});
+
+res.json({
+insurance:insuranceCount,
+service:serviceCount
+});
+
+}catch(error){
+
+console.log("Reminder count error",error);
+
+res.status(500).json({message:"Server error"});
+
+}
+
+});
+
+//showroom offer history check 
+router.get("/offer-history", protectShowroom, async (req,res)=>{
+
+try{
+
+const showroomId = req.showroom.id;
+
+const startOfMonth = new Date();
+startOfMonth.setDate(1);
+startOfMonth.setHours(0,0,0,0);
+
+const offers = await OfferLog.find({
+showroomId:showroomId,
+createdAt:{ $gte:startOfMonth }
+})
+.sort({createdAt:-1})
+.limit(5);
+
+res.json(offers);
+
+}catch(error){
+
+console.log("Offer history error",error);
 
 res.status(500).json({message:"Server error"});
 
