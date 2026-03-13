@@ -4,6 +4,9 @@ const { activateSubscription } = require("../controllers/userController");
 const protect = require("../middleware/authMiddleware");
 const User = require("../models/User");
 const sendPushNotification = require("../utils/sendPushNotification");
+const OfferLog = require("../models/OfferLog");
+const Showroom = require("../models/Showroom");
+const QrCode = require("../models/QrCode");
 
 router.put("/subscribe", protect, activateSubscription);
 
@@ -175,6 +178,82 @@ router.delete("/delete", protect, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
+});
+
+
+//User offer feed API
+router.get("/offers-feed", authMiddleware, async (req,res)=>{
+
+try{
+
+const userId = req.user.id;
+
+
+// user data
+const user = await User.findById(userId);
+
+if(!user?.city){
+return res.json([]);
+}
+
+
+// last 30 days
+const last30Days = new Date();
+last30Days.setDate(last30Days.getDate() - 30);
+
+
+// city showrooms
+const showrooms = await Showroom.find({
+city:user.city
+});
+
+const showroomIds = showrooms.map(s => s._id);
+
+
+// user showroom (if activated)
+const userQr = await QrCode.findOne({
+assignedTo:userId
+});
+
+const userShowroomId = userQr?.showroom || null;
+
+
+// offers
+let offers = await OfferLog.find({
+showroomId:{$in:showroomIds},
+createdAt:{$gte:last30Days}
+})
+.populate("showroomId","name city");
+
+
+// sort (user showroom first)
+offers = offers.sort((a,b)=>{
+
+if(a.showroomId?._id?.toString() === userShowroomId?.toString()){
+return -1;
+}
+
+if(b.showroomId?._id?.toString() === userShowroomId?.toString()){
+return 1;
+}
+
+return new Date(b.createdAt) - new Date(a.createdAt);
+
+});
+
+
+res.json(offers);
+
+}catch(error){
+
+console.log("Offers feed error",error);
+
+res.status(500).json({
+message:"Server error"
+});
+
+}
+
 });
 
 module.exports = router;

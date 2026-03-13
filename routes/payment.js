@@ -196,6 +196,14 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
       pincode,
     } = req.body;
 
+    // update user city
+        if(city){
+        await User.findByIdAndUpdate(
+        req.user._id,
+        { city: city }
+        );
+}
+
     // 🚫 Prevent duplicate payment processing
     const existingPayment = await Payment.findOne({
       razorpay_payment_id
