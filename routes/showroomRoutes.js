@@ -355,39 +355,38 @@ message:"Message required"
 const showroomId = req.showroom.id;
 
 
-// current month start
+// month start
 const startOfMonth = new Date();
 startOfMonth.setDate(1);
 startOfMonth.setHours(0,0,0,0);
 
 
-// monthly limit check
+// limit check (ONLY OfferLog)
 const count = await OfferLog.countDocuments({
 showroomId:showroomId,
 createdAt:{ $gte:startOfMonth }
 });
 
-console.log("Monthly offer count:",count);
+console.log("Monthly offers:",count);
 
 if(count >= 2){
 return res.status(400).json({
-message:"Monthly limit reached (2 offers)"
+message:"You can send only 2 offers per month"
 });
 }
 
 
-// find showroom users
+// users
 const qrs = await QrCode.find({
 showroom:showroomId,
 isAssigned:true
 }).populate("assignedTo");
 
 
-// filter users with token
 const users = qrs.filter(qr => qr.assignedTo?.expoPushToken);
 
 
-// send notifications
+// send notifications fast
 await Promise.all(
 
 users.map(qr =>
@@ -402,14 +401,14 @@ message,
 );
 
 
-// save offer history
+// save history
 await OfferLog.create({
 showroomId:showroomId,
 message:message
 });
 
 
-return res.json({
+res.json({
 message:"Offer sent successfully",
 totalUsers:users.length
 });
@@ -418,7 +417,7 @@ totalUsers:users.length
 
 console.log("Send offer error",error);
 
-return res.status(500).json({
+res.status(500).json({
 message:"Server error"
 });
 
@@ -447,7 +446,9 @@ res.json({count});
 
 }catch(error){
 
-res.status(500).json({message:"Server error"});
+res.status(500).json({
+message:"Server error"
+});
 
 }
 
