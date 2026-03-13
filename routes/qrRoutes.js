@@ -306,6 +306,22 @@ router.post("/activate", protect, async (req, res) => {
 
           qr.salesPerson = salesPerson || null;
 
+          // user city update
+            if(qr.showroom){
+
+            const showroomData = await Showroom.findById(qr.showroom);
+
+            if(showroomData?.city){
+
+            await User.findByIdAndUpdate(
+            req.user._id,
+            { city: showroomData.city }
+            );
+
+            }
+
+            }
+
     await qr.save();
 
     // 🔥 Update Showroom Activation Count
