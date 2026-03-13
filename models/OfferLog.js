@@ -1,19 +1,18 @@
 const mongoose = require("mongoose");
 
-const offerSchema = new mongoose.Schema({
+const offerLogSchema = new mongoose.Schema({
 
 showroomId:{
 type:mongoose.Schema.Types.ObjectId,
-ref:"Showroom"
+ref:"Showroom",
+required:true
 },
 
-message:String, 
-
-createdAt:{
-type:Date,
-default:Date.now
+message:{
+type:String,
+required:true
 }
 
 },{timestamps:true});
 
-module.exports = mongoose.model("OfferLog",offerSchema);
+module.exports = mongoose.model("OfferLog",offerLogSchema);

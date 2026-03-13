@@ -339,7 +339,7 @@ router.get("/qr-requests", protectShowroom, async (req, res) => {
 
 });
 
-//Send offer
+// Send showroom offer
 router.post("/send-offer", protectShowroom, async (req,res)=>{
 
 try{
@@ -354,21 +354,22 @@ message:"Message required"
 
 const showroomId = req.showroom.id;
 
-const now = new Date();
-const month = now.getMonth();
-const year = now.getFullYear();
+
+// current month start
+const startOfMonth = new Date();
+startOfMonth.setDate(1);
+startOfMonth.setHours(0,0,0,0);
 
 
 // check monthly limit
-const count = await ShowroomNotification.countDocuments({
-showroom:showroomId,
-month,
-year
+const count = await OfferLog.countDocuments({
+showroomId:showroomId,
+createdAt:{ $gte:startOfMonth }
 });
 
 if(count >= 2){
 return res.status(400).json({
-message:"Monthly limit reached (2 notifications)"
+message:"Monthly limit reached (2 offers)"
 });
 }
 
@@ -380,11 +381,11 @@ isAssigned:true
 }).populate("assignedTo");
 
 
-// filter users with token
+// users with push token
 const users = qrs.filter(qr => qr.assignedTo?.expoPushToken);
 
 
-// send push notifications (FAST)
+// send push notifications (parallel)
 await Promise.all(
 
 users.map(qr =>
@@ -399,16 +400,7 @@ message,
 );
 
 
-// save notification record
-await ShowroomNotification.create({
-showroom:showroomId,
-message,
-month,
-year
-});
-
-
-// save offer history (only once)
+// save offer history
 await OfferLog.create({
 showroomId:showroomId,
 message:message
@@ -416,10 +408,9 @@ message:message
 
 
 res.json({
-message:"Offer notification sent",
+message:"Offer sent successfully",
 totalUsers:users.length
 });
-
 
 }catch(error){
 
@@ -439,19 +430,26 @@ router.get("/offer-count", protectShowroom, async (req,res)=>{
 
 try{
 
-const now = new Date();
+const showroomId = req.showroom.id;
 
-const count = await ShowroomNotification.countDocuments({
-showroom:req.showroom.id,
-month:now.getMonth(),
-year:now.getFullYear()
+const startOfMonth = new Date();
+startOfMonth.setDate(1);
+startOfMonth.setHours(0,0,0,0);
+
+const count = await OfferLog.countDocuments({
+showroomId:showroomId,
+createdAt:{ $gte:startOfMonth }
 });
 
 res.json({count});
 
 }catch(error){
 
-res.status(500).json({message:"Error"});
+console.log("Offer count error",error);
+
+res.status(500).json({
+message:"Server error"
+});
 
 }
 
