@@ -205,7 +205,7 @@ last30Days.setDate(last30Days.getDate() - 30);
 
 // city showrooms
 const showrooms = await Showroom.find({
-city:user.city
+city: new RegExp("^"+user.city+"$", "i")
 });
 
 const showroomIds = showrooms.map(s => s._id);
