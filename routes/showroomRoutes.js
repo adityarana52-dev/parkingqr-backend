@@ -165,7 +165,8 @@ router.get("/dashboard", protectShowroom, async (req, res) => {
 
     // SalesPerson stats
     const salesPersons = await SalesPerson.find({
-      showroom: showroomId
+      showroom: showroomId,
+      isActive: true
     }).select("name totalActivations totalEarnings");
 
     res.json({

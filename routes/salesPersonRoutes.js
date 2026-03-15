@@ -120,21 +120,34 @@ router.get("/by-showroom/:showroomId", async (req, res) => {
 
 
 
-router.delete("/delete/:id", async (req, res) => {
+router.delete("/delete/:id", protectShowroom, async (req, res) => {
   try {
 
     const { id } = req.params;
 
-    const salesperson = await SalesPerson.findByIdAndDelete(id);
+    const salesperson = await SalesPerson.findOneAndUpdate(
+      {
+        _id: id,
+        showroom: req.showroom.id
+      },
+      {
+        isActive: false
+      },
+      { new: true }
+    );
 
     if (!salesperson) {
       return res.status(404).json({ message: "Salesperson not found" });
     }
 
-    res.json({ message: "Salesperson deleted successfully" });
+    res.json({ message: "Salesperson removed from team" });
 
   } catch (error) {
+
+    console.log("Soft delete error:", error);
+
     res.status(500).json({ message: "Server error" });
+
   }
 });
 
