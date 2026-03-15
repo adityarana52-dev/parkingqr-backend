@@ -787,12 +787,15 @@ const startOfMonth = new Date();
 startOfMonth.setDate(1);
 startOfMonth.setHours(0,0,0,0);
 
+const limitDate = new Date();
+limitDate.setDate(limitDate.getDate() - 30);
+
 const offers = await OfferLog.find({
-showroomId:showroomId,
-createdAt:{ $gte:startOfMonth }
+showroomId:{$in:showroomIds},
+createdAt:{$gte:limitDate}
 })
-.sort({createdAt:-1})
-.limit(5);
+.populate("showroomId","name")
+.sort({createdAt:-1});
 
 res.json(offers);
 
