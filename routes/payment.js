@@ -20,7 +20,7 @@ const razorpay = new Razorpay({
 router.post("/create-order", authMiddleware, async (req, res) => {
   try {
 
-    const amount = 499; // ₹499 fixed plan for now
+    const amount = 399; // ₹499 fixed plan for now
 
     const options = {
       amount: amount * 100, // Razorpay needs paise
@@ -72,7 +72,7 @@ router.post("/verify", authMiddleware, async (req, res) => {
         userId: req.user.id,
         razorpay_payment_id,
         razorpay_order_id,
-        amount: 499, // for now fixed
+        amount: 399, // for now fixed
         status: "success",
       });
 
