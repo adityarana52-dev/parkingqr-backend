@@ -44,7 +44,7 @@ router.get("/my-team", protectShowroom, async (req, res) => {
 
     const salesPersons = await SalesPerson.find({
       showroom: req.showroom.id,
-      
+      isActive: true
     }).select("name mobile totalActivations totalEarnings");
 
     res.json(salesPersons);
@@ -52,6 +52,30 @@ router.get("/my-team", protectShowroom, async (req, res) => {
   } catch (error) {
 
     console.log("Fetch Team Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
+
+
+router.get("/manage-team", protectShowroom, async (req, res) => {
+
+  try {
+
+    const salesPersons = await SalesPerson.find({
+      showroom: req.showroom.id
+    }).select("name mobile isActive totalActivations totalEarnings");
+
+    res.json(salesPersons);
+
+  } catch (error) {
+
+    console.log("Manage Team Error:", error);
 
     res.status(500).json({
       message: "Server error"
@@ -98,6 +122,44 @@ router.patch("/deactivate/:id", protectShowroom, async (req, res) => {
 
 });
 
+router.patch("/reactivate/:id", protectShowroom, async (req, res) => {
+
+  try {
+
+    const { id } = req.params;
+
+    const salesPerson = await SalesPerson.findOneAndUpdate(
+      {
+        _id: id,
+        showroom: req.showroom.id
+      },
+      { isActive: true },
+      { new: true }
+    );
+
+    if (!salesPerson) {
+      return res.status(404).json({
+        message: "Sales person not found"
+      });
+    }
+
+    res.json({
+      message: "Sales person reactivated"
+    });
+
+  } catch (error) {
+
+    console.log("Reactivate Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
+
 // ✅ Get Sales Persons By Showroom (For Dropdown)
 router.get("/by-showroom/:showroomId", async (req, res) => {
   try {
@@ -140,7 +202,10 @@ router.delete("/delete/:id", protectShowroom, async (req, res) => {
       return res.status(404).json({ message: "Salesperson not found" });
     }
 
-    res.json({ message: "Salesperson removed from team" });
+    res.json({
+          message: "Salesperson deactivated",
+          isActive: false
+        });
 
   } catch (error) {
 
