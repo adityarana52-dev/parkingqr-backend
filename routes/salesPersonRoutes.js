@@ -44,7 +44,7 @@ router.get("/my-team", protectShowroom, async (req, res) => {
 
     const salesPersons = await SalesPerson.find({
       showroom: req.showroom.id,
-      isActive: true
+      
     }).select("name mobile totalActivations totalEarnings");
 
     res.json(salesPersons);
