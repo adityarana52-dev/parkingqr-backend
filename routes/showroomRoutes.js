@@ -21,7 +21,18 @@ const ReminderLog = require("../models/ReminderLog");
 router.post("/create", async (req, res) => {
   try {
 
-    const { name, city, stateCode, contactPerson, phone, username, password } = req.body;
+    const {
+        name,
+        city,
+        stateCode,
+        addressLine1,
+        addressLine2,
+        pincode,
+        phone,
+        contactPerson,
+        username,
+        password
+        } = req.body;
 
     if (!name || !city || !stateCode || !username || !password) {
       return res.status(400).json({
@@ -48,15 +59,22 @@ router.post("/create", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const showroom = await Showroom.create({
-      name,
-      city,
-      stateCode: upperStateCode,
-      showroomCode,
-      contactPerson,
-      phone,
-      username,
-      password: hashedPassword
-    });
+          name,
+          city,
+          stateCode: upperStateCode,
+
+          showroomCode,
+
+          contactPerson,
+          phone,
+
+          addressLine1,
+          addressLine2,
+          pincode,
+
+          username,
+          password: hashedPassword
+        });
 
     res.status(201).json(showroom);
 

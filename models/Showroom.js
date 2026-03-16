@@ -40,6 +40,21 @@ const showroomSchema = new mongoose.Schema(
       default: null,
     },
 
+    addressLine1:{
+      type:String,
+      required:true
+      },
+
+      addressLine2:{
+      type:String,
+      default:null
+      },
+
+      pincode:{
+      type:String,
+      required:true
+      },
+
     // 🔐 LOGIN FIELDS
     username: {
       type: String,
