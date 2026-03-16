@@ -14,7 +14,7 @@ router.get("/qr-requests", async (req, res) => {
   try {
 
     const requests = await QrRequest.find()
-      .populate("showroom", "name showroomCode city")
+      .populate("showroom", "name showroomCode phone contactPerson addressLine1 addressLine2 pincode city")
       .sort({ createdAt: -1 });
 
     res.json(requests);
