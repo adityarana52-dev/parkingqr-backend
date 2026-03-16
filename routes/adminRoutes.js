@@ -8,6 +8,10 @@ const User = require("../models/User");
 const SalesPerson = require("../models/SalesPerson");
 const PDFDocument = require("pdfkit");
 const QRCode = require("qrcode");
+const ShowroomLead = require("../models/ShowroomLead");
+
+const StateCounter = require("../models/StateCounter");
+const bcrypt = require("bcryptjs");
 
 router.get("/qr-requests", async (req, res) => {
 
@@ -283,4 +287,125 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
 });
 
+
+// GET BUSINESS LEADS
+router.get("/business-leads", async (req, res) => {
+
+  try {
+
+    const leads = await ShowroomLead.find()
+      .sort({ createdAt: -1 });
+
+    res.json(leads);
+
+  } catch (error) {
+
+    console.log("Fetch Leads Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
+
+router.post("/convert-lead/:id", async (req, res) => {
+
+  try {
+
+    const lead = await ShowroomLead.findById(req.params.id);
+
+    if (!lead) {
+      return res.status(404).json({
+        message: "Lead not found"
+      });
+    }
+
+    // generate showroom code
+    const upperStateCode = lead.stateCode.toUpperCase();
+
+    const counter = await StateCounter.findOneAndUpdate(
+      { stateCode: upperStateCode },
+      { $inc: { lastNumber: 1 } },
+      { new: true, upsert: true }
+    );
+
+    const paddedNumber = counter.lastNumber
+      .toString()
+      .padStart(5, "0");
+
+    const showroomCode = upperStateCode + paddedNumber;
+
+    // auto credentials
+    const username = lead.phone;
+
+    const password = Math.random().toString(36).slice(-8);
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const showroom = await Showroom.create({
+
+      name: lead.name,
+      city: lead.city,
+      stateCode: lead.stateCode,
+      showroomCode,
+
+      contactPerson: lead.contactPerson,
+      phone: lead.phone,
+      addressLine1: lead.addressLine1,
+      pincode: lead.pincode,
+
+      username,
+      password: hashedPassword
+
+    });
+
+    lead.status = "converted";
+    await lead.save();
+
+    res.json({
+      message: "Lead converted successfully",
+      showroomCode,
+      username,
+      password
+    });
+
+  } catch (error) {
+
+    console.log("Convert Lead Error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+});
+
+router.patch("/reject-lead/:id", async (req,res)=>{
+
+try{
+
+await ShowroomLead.findByIdAndUpdate(
+req.params.id,
+{status:"rejected"}
+);
+
+res.json({
+message:"Lead rejected"
+});
+
+}catch(error){
+
+console.log("Reject Lead Error",error);
+
+res.status(500).json({
+message:"Server error"
+});
+
+}
+
+});
 module.exports = router;
