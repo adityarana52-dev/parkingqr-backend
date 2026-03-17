@@ -6,36 +6,39 @@ const protect = require("../middleware/authMiddleware");
 
 // ✅ Send message
 router.post("/", protect, async (req,res)=>{
-  try{
 
-    const { message } = req.body;
+const { message } = req.body;
 
-    const support = await Support.create({
-      user: req.user.id,
-      message
-    });
+let support = await Support.findOne({
+user: req.user.id,
+status:"open"
+});
 
-    res.json(support);
+if(!support){
+support = await Support.create({
+user:req.user.id,
+messages:[{ text: message }]
+});
+}else{
+support.messages.push({ text: message });
+await support.save();
+}
 
-  }catch(err){
-    res.status(500).json({message:"Server error"});
-  }
+res.json(support);
+
 });
 
 
 // ✅ Get my messages
 router.get("/my", protect, async (req,res)=>{
-  try{
 
-    const messages = await Support.find({
-      user: req.user.id
-    }).sort({ createdAt:-1 });
+const support = await Support.findOne({
+user:req.user.id,
+status:"open"
+});
 
-    res.json(messages);
+res.json(support?.messages || []);
 
-  }catch(err){
-    res.status(500).json({message:"Server error"});
-  }
 });
 
 module.exports = router;
