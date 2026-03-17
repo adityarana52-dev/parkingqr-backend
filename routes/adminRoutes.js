@@ -423,4 +423,70 @@ router.patch("/support/:id", async (req,res)=>{
 });
 
 
+const Support = require("../models/Support");
+
+router.get("/support", async (req,res)=>{
+try{
+
+const data = await Support.find()
+.populate("user","mobile")
+.sort({createdAt:-1});
+
+res.json(data);
+
+}catch(err){
+res.status(500).json({message:"Server error"});
+}
+});
+
+
+router.patch("/support/reply/:id", async (req,res)=>{
+try{
+
+const { message } = req.body;
+
+const support = await Support.findById(req.params.id);
+
+support.messages.push({
+text: message,
+sender:"admin"
+});
+
+await support.save();
+
+res.json({message:"Reply sent"});
+
+}catch(err){
+res.status(500).json({message:"Server error"});
+}
+});
+
+
+router.patch("/support/close/:id", async (req,res)=>{
+try{
+
+const support = await Support.findById(req.params.id);
+
+if(!support){
+return res.status(404).json({message:"Ticket not found"});
+}
+
+// ✅ status update
+support.status = "closed";
+
+// ✅ user ko message bhejo
+support.messages.push({
+text:"✅ Your issue has been resolved. If you need further help, you can start a new conversation.",
+sender:"admin"
+});
+
+await support.save();
+
+res.json({message:"Ticket closed"});
+
+}catch(err){
+res.status(500).json({message:"Server error"});
+}
+});
+
 module.exports = router;
