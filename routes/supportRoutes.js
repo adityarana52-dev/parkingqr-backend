@@ -55,18 +55,19 @@ res.json(support);
 // ✅ Get my messages
 router.get("/my", protect, async (req,res)=>{
 
-// 🔍 sirf open ticket lao
-let support = await Support.findOne({
-user:req.user.id,
-status:"open"
-});
+// latest ticket lao (open ya closed)
+const support = await Support.findOne({
+user:req.user.id
+}).sort({createdAt:-1});
 
-// ❌ agar resolved hai → empty return
 if(!support){
-return res.json([]);
+return res.json({ messages: [], status: "open" });
 }
 
-res.json(support.messages);
+res.json({
+messages: support.messages,
+status: support.status
+});
 
 });
 
