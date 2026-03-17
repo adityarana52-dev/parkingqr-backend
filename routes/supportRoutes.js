@@ -9,6 +9,10 @@ router.post("/", protect, async (req,res)=>{
 
 const { message } = req.body;
 
+if(!message){
+return res.status(400).json({message:"Message required"});
+}
+
 let support = await Support.findOne({
 user: req.user.id,
 status:"open"
