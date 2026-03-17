@@ -71,4 +71,29 @@ status: support.status
 
 });
 
+router.post("/new", protect, async (req,res)=>{
+try{
+
+// purane open ticket ko close karo (safety)
+await Support.updateMany(
+{ user:req.user.id, status:"open" },
+{ status:"closed" }
+);
+
+// new blank ticket create
+const support = await Support.create({
+user:req.user.id,
+messages:[]
+});
+
+res.json({
+message:"New chat started",
+support
+});
+
+}catch(err){
+res.status(500).json({message:"Server error"});
+}
+});
+
 module.exports = router;
