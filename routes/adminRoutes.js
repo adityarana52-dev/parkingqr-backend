@@ -408,4 +408,19 @@ message:"Server error"
 }
 
 });
+
+
+// GET all support messages
+router.get("/support", async (req,res)=>{
+  const data = await Support.find().populate("user","mobile").sort({createdAt:-1});
+  res.json(data);
+});
+
+// mark resolved
+router.patch("/support/:id", async (req,res)=>{
+  await Support.findByIdAndUpdate(req.params.id,{ status:"resolved" });
+  res.json({message:"updated"});
+});
+
+
 module.exports = router;
