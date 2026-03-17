@@ -13,19 +13,38 @@ if(!message){
 return res.status(400).json({message:"Message required"});
 }
 
+// 🔍 open ticket dhundo
 let support = await Support.findOne({
 user: req.user.id,
 status:"open"
 });
 
 if(!support){
-support = await Support.create({
-user:req.user.id,
-messages:[{ text: message }]
-});
+  
+  // 🆕 NEW ticket create
+  support = await Support.create({
+    user:req.user.id,
+    messages:[
+      { text: message, sender:"user" },
+      {
+        text:"✅ Your request has been received. Our team will contact you shortly.",
+        sender:"admin"
+      }
+    ]
+  });
+
 }else{
-support.messages.push({ text: message });
-await support.save();
+
+  // 🧵 SAME chat continue
+  support.messages.push(
+    { text: message, sender:"user" },
+    {
+      text:"✅ We have received your message. Our team will respond soon.",
+      sender:"admin"
+    }
+  );
+
+  await support.save();
 }
 
 res.json(support);
@@ -36,12 +55,18 @@ res.json(support);
 // ✅ Get my messages
 router.get("/my", protect, async (req,res)=>{
 
-const support = await Support.findOne({
+// 🔍 sirf open ticket lao
+let support = await Support.findOne({
 user:req.user.id,
 status:"open"
 });
 
-res.json(support?.messages || []);
+// ❌ agar resolved hai → empty return
+if(!support){
+return res.json([]);
+}
+
+res.json(support.messages);
 
 });
 
