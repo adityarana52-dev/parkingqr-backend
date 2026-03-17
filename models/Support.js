@@ -4,7 +4,14 @@ const supportSchema = new mongoose.Schema({
 
 user:{
 type: mongoose.Schema.Types.ObjectId,
-ref:"User"
+ref:"User",
+default:null
+},
+
+showroom:{
+type: mongoose.Schema.Types.ObjectId,
+ref:"Showroom",
+default:null
 },
 
 messages:[
