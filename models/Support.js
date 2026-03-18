@@ -24,6 +24,7 @@ sender:{
 type:String,
 default:"user"
 },
+
 createdAt:{
 type:Date,
 default:Date.now

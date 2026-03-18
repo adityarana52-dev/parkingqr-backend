@@ -412,7 +412,10 @@ message:"Server error"
 
 // GET all support messages
 router.get("/support", async (req,res)=>{
-  const data = await Support.find().populate("user","mobile").sort({createdAt:-1});
+  const data = await Support.find()
+.populate("user","mobile")
+.populate("showroom","name showroomCode")
+.sort({createdAt:-1});
   res.json(data);
 });
 

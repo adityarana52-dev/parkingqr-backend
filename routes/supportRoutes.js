@@ -1,147 +1,152 @@
 const express = require("express");
 const router = express.Router();
+
 const Support = require("../models/Support");
 const protect = require("../middleware/authMiddleware");
-const protectShowroom = require("../middleware/showroomAuthMiddleware");
 
 
-// ✅ Send message
-router.post("/", async (req,res)=>{
+// ✅ SEND MESSAGE
+router.post("/", protect, async (req, res) => {
+  try {
 
-const { message } = req.body;
+    const { message } = req.body;
 
-if(!message){
-return res.status(400).json({message:"Message required"});
-}
+    if (!message) {
+      return res.status(400).json({ message: "Message required" });
+    }
 
-      // 🔐 token detect (user ya showroom)
-      let userId = null;
-      let showroomId = null;
+    // 👇 detect sender type
+    const senderType =
+      req.user.role === "showroom" ? "showroom" : "user";
 
-      try {
-        await protect(req, res, () => {});
-        userId = req.user?.id;
-      } catch {}
+    // 🔍 find existing open ticket
+    let support = await Support.findOne({
+      $or: [
+        { user: req.user.id },
+        { showroom: req.user.id }
+      ],
+      status: "open"
+    });
 
-      try {
-        await protectShowroom(req, res, () => {});
-        showroomId = req.showroom?.id;
-      } catch {}
+    // 🆕 NEW ticket
+    if (!support) {
 
-      // ❌ agar dono null → unauthorized
-      if (!userId && !showroomId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      support = await Support.create({
 
-      // 🔍 query decide
-      let query = userId
-        ? { user: userId, status: "open" }
-        : { showroom: showroomId, status: "open" };
+        user: req.user.role === "user" ? req.user.id : null,
 
-      // 🔍 find ticket
-      let support = await Support.findOne(query);
+        showroom:
+          req.user.role === "showroom" ? req.user.id : null,
 
-      // 🆕 create new
-      if (!support) {
+        messages: [
+          {
+            text: message,
+            sender: senderType
+          },
+          {
+            text:
+              "✅ Your request has been received. Our team will contact you shortly.",
+            sender: "admin"
+          }
+        ]
 
-        support = await Support.create({
-          user: userId || null,
-          showroom: showroomId || null,
-          messages: [
-            { text: message, sender: "user" },
-            {
-              text: "✅ Your request has been received. Our team will contact you shortly.",
-              sender: "admin"
-            }
-          ]
-        });
-
-      } else {
-
-        support.messages.push(
-          { text: message, sender: "user" }
-        );
-
-        await support.save();
-      }
-
-      res.json(support);
-
-});
-
-
-// ✅ Get my messages
-router.get("/my", async (req,res)=>{
-
-// latest ticket lao (open ya closed)
-let userId = null;
-let showroomId = null;
-
-try {
-  await protect(req, res, () => {});
-  userId = req.user?.id;
-} catch {}
-
-try {
-  await protectShowroom(req, res, () => {});
-  showroomId = req.showroom?.id;
-} catch {}
-
-let query = userId
-  ? { user: userId }
-  : { showroom: showroomId };
-
-const support = await Support.findOne(query).sort({createdAt:-1});
-
-if(!support){
-return res.json({ messages: [], status: "open" });
-}
-
-res.json({
-messages: support.messages,
-status: support.status
-});
-
-});
-
-router.post("/new", async (req,res)=>{
-try{
-
-      let userId = null;
-      let showroomId = null;
-
-      try {
-        await protect(req, res, () => {});
-        userId = req.user?.id;
-      } catch {}
-
-      try {
-        await protectShowroom(req, res, () => {});
-        showroomId = req.showroom?.id;
-      } catch {}
-
-      let query = userId
-        ? { user: userId, status:"open" }
-        : { showroom: showroomId, status:"open" };
-
-      // old close
-      await Support.updateMany(query, { status:"closed" });
-
-      // new create
-      const support = await Support.create({
-      user: userId || null,
-      showroom: showroomId || null,
-      messages:[]
       });
 
-res.json({
-message:"New chat started",
-support
+    } else {
+
+      // 🧵 EXISTING chat continue
+      support.messages.push(
+        {
+          text: message,
+          sender: senderType
+        },
+        {
+          text:
+            "✅ We have received your message. Our team will respond soon.",
+          sender: "admin"
+        }
+      );
+
+      await support.save();
+    }
+
+    res.json(support);
+
+  } catch (error) {
+    console.log("Support Send Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
-}catch(err){
-res.status(500).json({message:"Server error"});
-}
+
+// ✅ GET MY CHAT
+router.get("/my", protect, async (req, res) => {
+  try {
+
+    const support = await Support.findOne({
+      $or: [
+        { user: req.user.id },
+        { showroom: req.user.id }
+      ]
+    }).sort({ createdAt: -1 });
+
+    if (!support) {
+      return res.json({
+        messages: [],
+        status: "open"
+      });
+    }
+
+    res.json({
+      messages: support.messages,
+      status: support.status
+    });
+
+  } catch (error) {
+    console.log("Support Fetch Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
+
+
+// ✅ START NEW CHAT
+router.post("/new", protect, async (req, res) => {
+  try {
+
+    // close old tickets
+    await Support.updateMany(
+      {
+        $or: [
+          { user: req.user.id },
+          { showroom: req.user.id }
+        ],
+        status: "open"
+      },
+      { status: "closed" }
+    );
+
+    // create new empty ticket
+    const support = await Support.create({
+
+      user: req.user.role === "user" ? req.user.id : null,
+
+      showroom:
+        req.user.role === "showroom" ? req.user.id : null,
+
+      messages: []
+
+    });
+
+    res.json({
+      message: "New chat started",
+      support
+    });
+
+  } catch (error) {
+    console.log("New Chat Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 module.exports = router;
