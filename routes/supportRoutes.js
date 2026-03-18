@@ -3,10 +3,11 @@ const router = express.Router();
 
 const Support = require("../models/Support");
 const protect = require("../middleware/authMiddleware");
+const protectShowroom = require("../middleware/showroomAuthMiddleware");
 
 
 // ✅ SEND MESSAGE
-router.post("/", protect, async (req, res) => {
+router.post("/", async (req, res) => {
   try {
 
     const { message } = req.body;
@@ -15,15 +16,52 @@ router.post("/", protect, async (req, res) => {
       return res.status(400).json({ message: "Message required" });
     }
 
-    // 👇 detect sender type
-    const senderType =
-      req.user.role === "showroom" ? "showroom" : "user";
+    let userId = null;
+    let showroomId = null;
+    let senderType = "user";
 
-    // 🔍 find existing open ticket
+    // 🔍 try user auth
+    try {
+      await new Promise((resolve, reject) => {
+        protect(req, res, (err) => {
+          if (err) reject(err);
+          else resolve(true);
+        });
+      });
+
+      if (req.user) {
+        userId = req.user.id;
+        senderType = "user";
+      }
+
+    } catch {}
+
+    // 🔍 try showroom auth
+    try {
+      await new Promise((resolve, reject) => {
+        protectShowroom(req, res, (err) => {
+          if (err) reject(err);
+          else resolve(true);
+        });
+      });
+
+      if (req.showroom) {
+        showroomId = req.showroom.id;
+        senderType = "showroom";
+      }
+
+    } catch {}
+
+    // ❌ no auth
+    if (!userId && !showroomId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // 🔍 find existing ticket
     let support = await Support.findOne({
       $or: [
-        { user: req.user.id },
-        { showroom: req.user.id }
+        { user: userId },
+        { showroom: showroomId }
       ],
       status: "open"
     });
@@ -32,12 +70,8 @@ router.post("/", protect, async (req, res) => {
     if (!support) {
 
       support = await Support.create({
-
-        user: req.user.role === "user" ? req.user.id : null,
-
-        showroom:
-          req.user.role === "showroom" ? req.user.id : null,
-
+        user: userId || null,
+        showroom: showroomId || null,
         messages: [
           {
             text: message,
@@ -49,12 +83,10 @@ router.post("/", protect, async (req, res) => {
             sender: "admin"
           }
         ]
-
       });
 
     } else {
 
-      // 🧵 EXISTING chat continue
       support.messages.push(
         {
           text: message,
@@ -80,13 +112,44 @@ router.post("/", protect, async (req, res) => {
 
 
 // ✅ GET MY CHAT
-router.get("/my", protect, async (req, res) => {
+router.get("/my", async (req, res) => {
   try {
+
+    let userId = null;
+    let showroomId = null;
+
+    try {
+      await new Promise((resolve, reject) => {
+        protect(req, res, (err) => {
+          if (err) reject(err);
+          else resolve(true);
+        });
+      });
+
+      if (req.user) userId = req.user.id;
+
+    } catch {}
+
+    try {
+      await new Promise((resolve, reject) => {
+        protectShowroom(req, res, (err) => {
+          if (err) reject(err);
+          else resolve(true);
+        });
+      });
+
+      if (req.showroom) showroomId = req.showroom.id;
+
+    } catch {}
+
+    if (!userId && !showroomId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
     const support = await Support.findOne({
       $or: [
-        { user: req.user.id },
-        { showroom: req.user.id }
+        { user: userId },
+        { showroom: showroomId }
       ]
     }).sort({ createdAt: -1 });
 
@@ -110,31 +173,57 @@ router.get("/my", protect, async (req, res) => {
 
 
 // ✅ START NEW CHAT
-router.post("/new", protect, async (req, res) => {
+router.post("/new", async (req, res) => {
   try {
 
-    // close old tickets
+    let userId = null;
+    let showroomId = null;
+
+    try {
+      await new Promise((resolve, reject) => {
+        protect(req, res, (err) => {
+          if (err) reject(err);
+          else resolve(true);
+        });
+      });
+
+      if (req.user) userId = req.user.id;
+
+    } catch {}
+
+    try {
+      await new Promise((resolve, reject) => {
+        protectShowroom(req, res, (err) => {
+          if (err) reject(err);
+          else resolve(true);
+        });
+      });
+
+      if (req.showroom) showroomId = req.showroom.id;
+
+    } catch {}
+
+    if (!userId && !showroomId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // close old
     await Support.updateMany(
       {
         $or: [
-          { user: req.user.id },
-          { showroom: req.user.id }
+          { user: userId },
+          { showroom: showroomId }
         ],
         status: "open"
       },
       { status: "closed" }
     );
 
-    // create new empty ticket
+    // new
     const support = await Support.create({
-
-      user: req.user.role === "user" ? req.user.id : null,
-
-      showroom:
-        req.user.role === "showroom" ? req.user.id : null,
-
+      user: userId || null,
+      showroom: showroomId || null,
       messages: []
-
     });
 
     res.json({
