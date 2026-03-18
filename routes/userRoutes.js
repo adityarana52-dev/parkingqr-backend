@@ -224,7 +224,7 @@ let offers = await OfferLog.find({
 showroomId:{$in:showroomIds},
 createdAt:{$gte:last30Days}
 })
-.populate("showroomId","name city");
+.populate("showroomId","name city phone contactNumber");
 
 
 // sort (user showroom first)
