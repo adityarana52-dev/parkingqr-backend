@@ -228,9 +228,14 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
     const requestId = req.params.showroomId;
 
+    console.log("REQ ID 👉", req.params.showroomId);
+
       const qrs = await QrCode.find({
         requestId: requestId
       });
+
+      console.log("QR COUNT 👉", qrs.length);
+    console.log("QR requestIds 👉", qrs.map(q => q.requestId));
 
     if (!qrs.length) {
       return res.status(404).json({
