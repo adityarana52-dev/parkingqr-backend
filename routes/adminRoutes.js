@@ -268,14 +268,65 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
       const imgBuffer = Buffer.from(base64Data, "base64");
 
-      doc.image(imgBuffer, x, y, { width: 120 });
+      // Outer box
+        doc.rect(x, y, 170, 220).stroke("#ddd");
 
-      y += 150;
+        // Header
+        doc
+          .fontSize(12)
+          .fillColor("#111")
+          .text("PARKING QR", x, y + 5, {
+            width: 170,
+            align: "center"
+          });
 
-      if (y > 700) {
-        doc.addPage();
-        y = 50;
-      }
+        // QR Image
+        doc.image(imgBuffer, x + 25, y + 25, { width: 120 });
+
+        // Divider line
+        doc.moveTo(x + 10, y + 150)
+          .lineTo(x + 160, y + 150)
+          .stroke("#ddd");
+
+        // Tagline
+        doc
+          .fontSize(9)
+          .fillColor("#333")
+          .text("Scan to Contact Owner", x, y + 155, {
+            width: 170,
+            align: "center"
+          });
+
+        // Info lines
+        doc
+          .fontSize(8)
+          .fillColor("#666")
+          .text("• Blocked? Request to Move", x + 10, y + 175)
+          .text("• Emergency Contact Access", x + 10, y + 185)
+          .text("• No phone number shared", x + 10, y + 195);
+
+        // Footer
+        doc
+          .fontSize(7)
+          .fillColor("#999")
+          .text("Powered by ParkingQR", x, y + 205, {
+            width: 170,
+            align: "center"
+          });
+
+        // 👉 next QR position
+        x += 190;
+
+        if (x > 400) {
+          x = 50;
+          y += 240;
+        }
+
+        if (y > 700) {
+          doc.addPage();
+          x = 50;
+          y = 50;
+        }
 
     }
 
