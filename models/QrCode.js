@@ -13,6 +13,12 @@ const qrCodeSchema = new mongoose.Schema(
       default: null,
     },
 
+    requestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "QrRequest",
+      default: null
+    },
+
     sourceType: {
       type: String,
       enum: ["showroom", "retail", "direct"],

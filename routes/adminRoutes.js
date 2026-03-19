@@ -64,7 +64,8 @@ router.patch("/approve-request/:id", async (req, res) => {
       qrList.push({
         qrId,
         sourceType: "showroom",
-        showroom: request.showroom
+        showroom: request.showroom,
+        requestId: request._id   // ✅ ADD
       });
 
     }
@@ -225,11 +226,11 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
   try {
 
-    const showroomId = req.params.showroomId;
+    const requestId = req.params.showroomId;
 
-    const qrs = await QrCode.find({
-      showroom: showroomId
-    }).limit(50); // batch size
+      const qrs = await QrCode.find({
+        requestId: requestId
+      });
 
     if (!qrs.length) {
       return res.status(404).json({
