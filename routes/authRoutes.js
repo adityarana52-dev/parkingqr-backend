@@ -13,13 +13,15 @@ router.post("/send-otp", async (req, res) => {
 
   try {
     await axios.get("https://www.fast2sms.com/dev/bulkV2", {
-      params: {
-        authorization: process.env.FAST2SMS_API_KEY,
-        route: "otp",
-        variables_values: otp,
-        numbers: mobile,
-      },
-    });
+            headers: {
+                authorization: process.env.FAST2SMS_API_KEY,
+            },
+            params: {
+                route: "otp",
+                variables_values: otp,
+                numbers: mobile,
+            },
+            });
 
     // 🔥 store OTP temporarily
     global.otpStore = global.otpStore || {};
