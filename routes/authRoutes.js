@@ -17,7 +17,7 @@ router.post("/send-otp", async (req, res) => {
   try {
     await axios.get("https://www.fast2sms.com/dev/bulkV2", {
             headers: {
-                authorization: `Bearer ${process.env.FAST2SMS_API_KEY}`,
+                authorization: process.env.FAST2SMS_API_KEY,
             },
             params: {
                 route: "otp",
