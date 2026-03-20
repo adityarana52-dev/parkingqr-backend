@@ -11,6 +11,7 @@ router.post("/send-otp", async (req, res) => {
 
   console.log("MOBILE:", mobile);
   console.log("API KEY:", process.env.FAST2SMS_API_KEY);
+  console.log("ENV KEY:", process.env.FAST2SMS_API_KEY);
 
   // ✅ पहले OTP बनाओ
   const otp = Math.floor(100000 + Math.random() * 900000);
