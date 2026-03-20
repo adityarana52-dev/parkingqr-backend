@@ -18,16 +18,20 @@ router.post("/send-otp", async (req, res) => {
 
   try {
     // ✅ फिर SMS भेजो
-    await axios.get("https://www.fast2sms.com/dev/bulkV2", {
-      headers: {
-        authorization: process.env.FAST2SMS_API_KEY,
-      },
-      params: {
-        route: "q",
-        message: `Your OTP is ${otp}`,
-        numbers: mobile,
-      },
-    });
+    await axios.post(
+  "https://www.fast2sms.com/dev/bulkV2",
+  {
+    route: "q",
+    message: `Your OTP is ${otp}`,
+    numbers: mobile,
+  },
+  {
+    headers: {
+      authorization: process.env.FAST2SMS_API_KEY,
+      "Content-Type": "application/json",
+    },
+  }
+);
 
     // ✅ store करो
     global.otpStore = global.otpStore || {};
