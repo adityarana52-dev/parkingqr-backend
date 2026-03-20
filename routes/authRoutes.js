@@ -9,12 +9,15 @@ const axios = require("axios");
 router.post("/send-otp", async (req, res) => {
   const { mobile } = req.body;
 
+  console.log("MOBILE:", mobile);
+  console.log("API KEY:", process.env.FAST2SMS_API_KEY);
+
   const otp = Math.floor(100000 + Math.random() * 900000);
 
   try {
     await axios.get("https://www.fast2sms.com/dev/bulkV2", {
             headers: {
-                authorization: process.env.FAST2SMS_API_KEY,
+                authorization: `Bearer ${process.env.FAST2SMS_API_KEY}`,
             },
             params: {
                 route: "otp",
