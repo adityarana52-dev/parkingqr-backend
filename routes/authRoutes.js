@@ -11,33 +11,33 @@ router.post("/send-otp", async (req, res) => {
 
   console.log("MOBILE:", mobile);
   console.log("API KEY:", process.env.FAST2SMS_API_KEY);
-  console.log("OTP:", otp);
-  console.log("ERROR FULL:", error.response?.data || error.message);
 
+  // ✅ पहले OTP बनाओ
   const otp = Math.floor(100000 + Math.random() * 900000);
 
   try {
+    // ✅ फिर SMS भेजो
     await axios.get("https://www.fast2sms.com/dev/bulkV2", {
-          headers: {
-            authorization: process.env.FAST2SMS_API_KEY,
-          },
-          params: {
-            route: "q",
-            message: `Your OTP is ${otp}`,
-            numbers: mobile,
-          },
-        });
+      headers: {
+        authorization: process.env.FAST2SMS_API_KEY,
+      },
+      params: {
+        route: "q",
+        message: `Your OTP is ${otp}`,
+        numbers: mobile,
+      },
+    });
 
-    // 🔥 store OTP temporarily
+    // ✅ store करो
     global.otpStore = global.otpStore || {};
     global.otpStore[mobile] = otp;
 
-    console.log("OTP:", otp); // debug
+    console.log("OTP:", otp);
 
     res.json({ success: true });
 
   } catch (error) {
-    console.log("SMS error", error);
+    console.log("SMS error:", error.response?.data || error.message);
     res.status(500).json({ message: "OTP send failed" });
   }
 });
