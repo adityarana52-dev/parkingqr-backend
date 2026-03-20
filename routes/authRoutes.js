@@ -15,12 +15,12 @@ router.post("/send-otp", async (req, res) => {
   const otp = Math.floor(100000 + Math.random() * 900000);
 
   try {
-    await axios.get("https://www.fast2sms.com/dev/bulkV2", {
+    await axios.get("https://www.fast2sms.com/dev/otpV2", {
             headers: {
                 authorization: process.env.FAST2SMS_API_KEY,
             },
             params: {
-                route: "otp",
+                route: "q",
                 variables_values: otp,
                 numbers: mobile,
             },
