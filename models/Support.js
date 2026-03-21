@@ -20,6 +20,7 @@ text:{
 type:String,
 required:true
 },
+
 sender:{
 type:String,
 default:"user"
