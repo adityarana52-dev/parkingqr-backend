@@ -223,21 +223,19 @@ router.get("/dashboard", async (req, res) => {
 
 
 router.get("/download-showroom-qr/:showroomId", async (req, res) => {
-
   try {
-
-
     const path = require("path");
+    const fs = require("fs");
+
     const requestId = req.params.showroomId;
 
-    console.log("REQ ID 👉", req.params.showroomId);
+    console.log("REQ ID 👉", requestId);
 
-      const qrs = await QrCode.find({
-        requestId: requestId
-      });
+    const qrs = await QrCode.find({
+      requestId: requestId
+    });
 
-      console.log("QR COUNT 👉", qrs.length);
-    console.log("QR requestIds 👉", qrs.map(q => q.requestId));
+    console.log("QR COUNT 👉", qrs.length);
 
     if (!qrs.length) {
       return res.status(404).json({
@@ -248,7 +246,6 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
     const doc = new PDFDocument({ margin: 20 });
 
     res.setHeader("Content-Type", "application/pdf");
-
     res.setHeader(
       "Content-Disposition",
       "attachment; filename=qr-batch.pdf"
@@ -256,8 +253,8 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
     doc.pipe(res);
 
-    let x = 50;
-    let y = 50;
+    let x = 40;
+    let y = 40;
 
     for (let qr of qrs) {
 
@@ -270,92 +267,77 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
       const imgBuffer = Buffer.from(base64Data, "base64");
 
-      // Light card background
-doc.rect(x, y, 170, 220).fill("#F5F5F5");
+      // =========================
+      // 🔥 PREMIUM CARD DESIGN
+      // =========================
 
-// QR LEFT SIDE
-const qrSize = 90;
+      const cardWidth = 500;
+      const cardHeight = 230;
 
-doc.rect(x + 10, y + 25, qrSize, qrSize).fill("#FFFFFF");
+      // Outer border
+      doc
+        .lineWidth(2)
+        .roundedRect(x, y, cardWidth, cardHeight, 12)
+        .stroke("#000");
 
-doc.image(imgBuffer, x + 15, y + 30, {
-  width: qrSize - 10,
-});
+      // QR LEFT (BIG)
+      const qrSize = 160;
 
-// RIGHT SIDE TEXT
-doc
-  .fillColor("#000")
-  .fontSize(10)
-  .font("Helvetica-Bold")
-  .text("Move Vehicle Request", x + 105, y + 40);
+      // white bg behind QR
+      doc
+        .rect(x + 15, y + 25, qrSize + 10, qrSize + 10)
+        .fill("#fff");
 
-doc
-  .fontSize(10)
-  .text("Towing your vehicle", x + 105, y + 60);
+      doc.image(imgBuffer, x + 20, y + 30, {
+        width: qrSize,
+      });
 
-doc
-  .text("Contact Owner Directly", x + 105, y + 80);
+      // RIGHT TEXT
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(18)
+        .fillColor("#000")
+        .text("Move Vehicle Request", x + 200, y + 50);
 
-// Bottom divider
-doc.moveTo(x + 10, y + 130)
-  .lineTo(x + 160, y + 130)
-  .stroke("#ccc");
+      doc
+        .font("Helvetica")
+        .fontSize(16)
+        .text("Towing your vehicle", x + 200, y + 85);
 
-// Footer text
-doc
-  .fontSize(8)
-  .fillColor("#555")
-  .text("Scan to contact vehicle owner", x, y + 140, {
-    width: 170,
-    align: "center"
-  });
+      doc
+        .text("Contact Vehicle Owner Directly", x + 200, y + 115);
 
-// Powered by
-doc
-  .fontSize(7)
-  .fillColor("#999")
-  .text("Powered by ParkingQR", x, y + 190, {
-    width: 170,
-    align: "center"
-  });
+      // CAR IMAGE (BOTTOM FULL WIDTH)
+      const carPath = path.join(__dirname, "../assets/car.png");
 
-  const fs = require("fs");
+      if (fs.existsSync(carPath)) {
+        doc.image(carPath, x + 20, y + 150, {
+          width: 460,
+        });
+      }
 
-const carPath = path.join(__dirname, "../assets/car.png");
+      // =========================
+      // 👉 NEXT POSITION
+      // =========================
 
-if (fs.existsSync(carPath)) {
-  doc.image(carPath, x + 10, y + 155, {
-    width: 150,
-  });
-}
-        // 👉 next QR position
-        x += 190;
+      y += 260;
 
-        if (x > 400) {
-          x = 50;
-          y += 240;
-        }
-
-        if (y > 700) {
-          doc.addPage();
-          x = 50;
-          y = 50;
-        }
-
+      if (y > 700) {
+        doc.addPage();
+        x = 40;
+        y = 40;
+      }
     }
 
     doc.end();
 
   } catch (error) {
-
     console.log("QR Download Error:", error);
 
     res.status(500).json({
       message: "Server error"
     });
-
   }
-
 });
 
 
