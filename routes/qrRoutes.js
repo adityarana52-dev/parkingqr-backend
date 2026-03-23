@@ -815,72 +815,35 @@ for (const qr of savedQrs) {
   const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
   const qrBuffer = await QRCode.toBuffer(publicUrl);
 
-  // Black Background
-  doc.rect(x, y, stickerWidth, stickerHeight).fill("#0F0F0F");
+  // Light background
+doc.rect(x, y, stickerWidth, stickerHeight).fill("#F5F5F5");
 
-  // Outer Gold Border
-  doc
-    .lineWidth(2)
-    .strokeColor("#C6A75E")
-    .rect(x, y, stickerWidth, stickerHeight)
-    .stroke();
+// QR LEFT SIDE
+const qrSize = 90;
 
-  // Inner Gold Frame
-  doc
-    .lineWidth(1)
-    .rect(x + 6, y + 6, stickerWidth - 12, stickerHeight - 12)
-    .stroke();
+doc.rect(x + 10, y + 20, qrSize, qrSize).fill("#FFFFFF");
 
-  // Title
-  doc
-    .fillColor("#C6A75E")
-    .fontSize(14)
-    .font("Helvetica-Bold")
-    .text("PARKING QR", x, y + 18, {
-      width: stickerWidth,
-      align: "center",
-    });
+doc.image(qrBuffer, x + 15, y + 25, {
+  width: qrSize - 10,
+});
 
-  // Divider Line
-  doc
-    .moveTo(x + 30, y + 40)
-    .lineTo(x + stickerWidth - 30, y + 40)
-    .strokeColor("#C6A75E")
-    .lineWidth(1)
-    .stroke();
+// RIGHT SIDE TEXT
+doc
+  .fillColor("#000")
+  .fontSize(10)
+  .font("Helvetica-Bold")
+  .text("Move Vehicle Request", x + 110, y + 30);
 
-  // QR White Box
-  const qrBoxSize = 105;
-  const qrX = x + (stickerWidth - qrBoxSize) / 2;
-  const qrY = y + 50;
+doc
+  .fontSize(10)
+  .text("Towing your vehicle", x + 110, y + 50);
 
-  doc.rect(qrX, qrY, qrBoxSize, qrBoxSize).fill("#FFFFFF");
+doc
+  .text("Contact Vehicle Owner Directly", x + 110, y + 70);
 
-  doc.image(qrBuffer, qrX + 6, qrY + 6, {
-    width: qrBoxSize - 12,
-  });
-
-  // Bottom Text
-  doc
-    .fillColor("#C6A75E")
-    .fontSize(8)
-    .font("Helvetica")
-    .text("Scan for Owner Notification", x, y + 158, {
-      width: stickerWidth,
-      align: "center",
-    });
-
-  doc
-    .text("Move Request • Toeing Your Vehicle", x, y + 168, {
-      width: stickerWidth,
-      align: "center",
-    });
-
-  doc
-    .text("Emergency Contact Available", x, y + 178, {
-      width: stickerWidth,
-      align: "center",
-    });
+  doc.image("assets/car.png", x + 10, y + 110, {
+  width: 160,
+});
 
   doc
     .fontSize(6)
