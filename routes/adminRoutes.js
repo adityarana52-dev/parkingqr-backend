@@ -319,11 +319,15 @@ doc
     align: "center"
   });
 
-  const carPath = path.join(__dirname, "../assets/car.png");
+  const fs = require("fs");
 
-doc.image(carPath, x + 10, y + 150, {
-  width: 150,
-});
+const carPath = path.join(__dirname, "../assets/car.png");
+
+if (fs.existsSync(carPath)) {
+  doc.image(carPath, x + 10, y + 155, {
+    width: 150,
+  });
+}
         // 👉 next QR position
         x += 190;
 
