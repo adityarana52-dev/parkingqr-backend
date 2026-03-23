@@ -226,6 +226,8 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
   try {
 
+
+    const path = require("path");
     const requestId = req.params.showroomId;
 
     console.log("REQ ID 👉", req.params.showroomId);
@@ -268,52 +270,60 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
       const imgBuffer = Buffer.from(base64Data, "base64");
 
-      // Outer box
-        doc.rect(x, y, 170, 220).stroke("#ddd");
+      // Light card background
+doc.rect(x, y, 170, 220).fill("#F5F5F5");
 
-        // Header
-        doc
-          .fontSize(12)
-          .fillColor("#111")
-          .text("PARKING QR", x, y + 5, {
-            width: 170,
-            align: "center"
-          });
+// QR LEFT SIDE
+const qrSize = 90;
 
-        // QR Image
-        doc.image(imgBuffer, x + 25, y + 25, { width: 120 });
+doc.rect(x + 10, y + 25, qrSize, qrSize).fill("#FFFFFF");
 
-        // Divider line
-        doc.moveTo(x + 10, y + 150)
-          .lineTo(x + 160, y + 150)
-          .stroke("#ddd");
+doc.image(imgBuffer, x + 15, y + 30, {
+  width: qrSize - 10,
+});
 
-        // Tagline
-        doc
-          .fontSize(9)
-          .fillColor("#333")
-          .text("Scan to Contact Owner", x, y + 155, {
-            width: 170,
-            align: "center"
-          });
+// RIGHT SIDE TEXT
+doc
+  .fillColor("#000")
+  .fontSize(10)
+  .font("Helvetica-Bold")
+  .text("Move Vehicle Request", x + 105, y + 40);
 
-        // Info lines
-        doc
-          .fontSize(8)
-          .fillColor("#666")
-          .text("• Blocked? Request to Move", x + 10, y + 175)
-          .text("• Emergency Contact Access", x + 10, y + 185)
-          .text("• No phone number shared", x + 10, y + 195);
+doc
+  .fontSize(10)
+  .text("Towing your vehicle", x + 105, y + 60);
 
-        // Footer
-        doc
-          .fontSize(7)
-          .fillColor("#999")
-          .text("Powered by ParkingQR", x, y + 205, {
-            width: 170,
-            align: "center"
-          });
+doc
+  .text("Contact Owner Directly", x + 105, y + 80);
 
+// Bottom divider
+doc.moveTo(x + 10, y + 130)
+  .lineTo(x + 160, y + 130)
+  .stroke("#ccc");
+
+// Footer text
+doc
+  .fontSize(8)
+  .fillColor("#555")
+  .text("Scan to contact vehicle owner", x, y + 140, {
+    width: 170,
+    align: "center"
+  });
+
+// Powered by
+doc
+  .fontSize(7)
+  .fillColor("#999")
+  .text("Powered by ParkingQR", x, y + 190, {
+    width: 170,
+    align: "center"
+  });
+
+  const carPath = path.join(__dirname, "../assets/car.png");
+
+doc.image(carPath, x + 10, y + 150, {
+  width: 150,
+});
         // 👉 next QR position
         x += 190;
 
