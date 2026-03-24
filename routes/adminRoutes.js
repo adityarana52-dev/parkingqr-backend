@@ -222,11 +222,11 @@ router.get("/dashboard", async (req, res) => {
 });
 
 
+const puppeteer = require("puppeteer");
+const path = require("path");
+
 router.get("/download-showroom-qr/:showroomId", async (req, res) => {
   try {
-    const PDFDocument = require("pdfkit");
-    const path = require("path");
-
     const requestId = req.params.showroomId;
 
     const qrs = await QrCode.find({ requestId });
@@ -235,122 +235,140 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       return res.status(404).json({ message: "No QR codes found" });
     }
 
-    const doc = new PDFDocument({ margin: 20 });
+    // 🔥 Local image path
+    const carPath = path.join(__dirname, "../assets/car2.png");
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "attachment; filename=qr-batch.pdf");
+    // 🔥 Generate all QR cards HTML
+    let cardsHTML = "";
 
-    doc.pipe(res);
-
-    // ===== GRID SETTINGS =====
-    let x = 20;
-    let y = 20;
-
-    const cardWidth = 180;
-    const cardHeight = 260;
-    const gap = 10;
-
-    for (let i = 0; i < qrs.length; i++) {
-      const qr = qrs[i];
-
+    for (let qr of qrs) {
       const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
 
-      const qrImage = await QRCode.toDataURL(publicUrl);
-      const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
-      const imgBuffer = Buffer.from(base64Data, "base64");
+      cardsHTML += `
+        <div class="card">
+          
+          <div class="qr-section">
+            <img class="qr" src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${publicUrl}" />
+            <div class="scan-text">Scan to Contact</div>
 
-      // =========================
-      // CARD BACKGROUND
-      // =========================
-      doc
-        .roundedRect(x, y, cardWidth, cardHeight, 15)
-        .fill("#000");
+            <div class="icons">
+              <div>🚗<br/>Move</div>
+              <div>🚛<br/>Tow</div>
+              <div>📍<br/>Location</div>
+              <div>📞<br/>Emergency</div>
+            </div>
+          </div>
 
-      // =========================
-      // WHITE TOP SECTION
-      // =========================
-      doc
-        .roundedRect(x, y, cardWidth, 170, 15)
-        .fill("#fff");
+          <div class="bottom">
+            <img class="car" src="file://${carPath}" />
+            <div class="features">
+              Move • Tow • Location • Emergency
+            </div>
+          </div>
 
-      // =========================
-      // QR
-      // =========================
-      doc.image(imgBuffer, x + 25, y + 20, {
-        width: 130,
-      });
-
-      // =========================
-      // SCAN TEXT
-      // =========================
-      doc
-        .fillColor("#000")
-        .fontSize(14)
-        .font("Helvetica-Bold")
-        .text("Scan to Contact", x, y + 155, {
-          width: cardWidth,
-          align: "center",
-        });
-
-      // =========================
-      // ICON ROW (emoji based)
-      // =========================
-      doc.fontSize(10).fillColor("#000");
-
-      doc.text("🚗 Move", x + 10, y + 175);
-      doc.text("🚛 Tow", x + 90, y + 175);
-
-      doc.text("📍 Location", x + 10, y + 190);
-      doc.text("📞 Emergency", x + 90, y + 190);
-
-      // =========================
-      // CURVE EFFECT (fake)
-      // =========================
-      doc
-        .circle(x + cardWidth / 2, y + 190, 120)
-        .fill("#000");
-
-      // =========================
-      // CAR IMAGE
-      // =========================
-      const carPath = path.join(__dirname, "../assets/car2.png");
-
-      doc.image(carPath, x + 10, y + 165, {
-        width: 160,
-      });
-
-      // =========================
-      // BOTTOM TEXT
-      // =========================
-      doc
-        .fillColor("#fff")
-        .fontSize(8)
-        .text("Move • Tow • Location • Emergency", x, y + 230, {
-          width: cardWidth,
-          align: "center",
-        });
-
-      // =========================
-      // POSITION (3 PER ROW)
-      // =========================
-      x += cardWidth + gap;
-
-      if ((i + 1) % 3 === 0) {
-        x = 20;
-        y += cardHeight + gap;
-      }
-
-      if (y > 700) {
-        doc.addPage();
-        x = 20;
-        y = 20;
-      }
+        </div>
+      `;
     }
 
-    doc.end();
+    // 🔥 FULL HTML
+    const html = `
+      <html>
+      <head>
+        <style>
+          body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial;
+          }
+
+          .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+          }
+
+          .card {
+            width: 250px;
+            border-radius: 20px;
+            overflow: hidden;
+            background: #000;
+          }
+
+          .qr-section {
+            background: #fff;
+            text-align: center;
+            padding: 15px;
+          }
+
+          .qr {
+            width: 150px;
+            height: 150px;
+          }
+
+          .scan-text {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 5px;
+          }
+
+          .icons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+            font-size: 10px;
+          }
+
+          .bottom {
+            text-align: center;
+            padding: 10px;
+          }
+
+          .car {
+            width: 100%;
+            height: 60px;
+            object-fit: contain;
+          }
+
+          .features {
+            color: #fff;
+            font-size: 10px;
+            margin-top: 5px;
+          }
+
+        </style>
+      </head>
+
+      <body>
+        <div class="container">
+          ${cardsHTML}
+        </div>
+      </body>
+      </html>
+    `;
+
+    // 🔥 Puppeteer launch
+    const browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+
+    await page.setContent(html, { waitUntil: "networkidle0" });
+
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+    });
+
+    await browser.close();
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=qr-cards.pdf");
+
+    res.send(pdf);
 
   } catch (error) {
-    console.log("QR Download Error:", error);
+    console.log("QR PDF ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
