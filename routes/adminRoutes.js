@@ -271,56 +271,63 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       // 🔥 PREMIUM CARD DESIGN
       // =========================
 
-      const cardWidth = 500;
-      const cardHeight = 230;
+      const cardWidth = 260;
+      const cardHeight = 180;
 
-      // Outer border
-      doc
-        .lineWidth(2)
-        .roundedRect(x, y, cardWidth, cardHeight, 12)
-        .stroke("#000");
+      const qrSize = 90;
 
-      // QR LEFT (BIG)
-      const qrSize = 160;
+      // Border
+doc
+  .lineWidth(1.5)
+  .roundedRect(x, y, cardWidth, cardHeight, 10)
+  .stroke("#000");
 
-      // white bg behind QR
-      doc
-        .rect(x + 15, y + 25, qrSize + 10, qrSize + 10)
-        .fill("#fff");
+// QR LEFT
+doc.rect(x + 10, y + 20, qrSize + 10, qrSize + 10).fill("#fff");
 
-      doc.image(imgBuffer, x + 20, y + 30, {
-        width: qrSize,
-      });
+doc.image(imgBuffer, x + 15, y + 25, {
+  width: qrSize,
+});
 
-      // RIGHT TEXT
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(18)
-        .fillColor("#000")
-        .text("Move Vehicle Request", x + 200, y + 50);
+// TEXT RIGHT
+doc
+  .font("Helvetica-Bold")
+  .fontSize(12)
+  .fillColor("#000")
+  .text("Move Vehicle Request", x + 110, y + 25);
 
-      doc
-        .font("Helvetica")
-        .fontSize(16)
-        .text("Towing your vehicle", x + 200, y + 85);
+doc
+  .font("Helvetica")
+  .fontSize(11)
+  .text("🚗 Towing your vehicle", x + 110, y + 50);
 
-      doc
-        .text("Contact Vehicle Owner Directly", x + 200, y + 115);
+doc
+  .text("📞 Contact Owner Directly", x + 110, y + 70);
 
-      // CAR IMAGE (BOTTOM FULL WIDTH)
-      const carPath = path.join(__dirname, "../assets/car.png");
+// Divider
+doc.moveTo(x + 10, y + 105)
+  .lineTo(x + 250, y + 105)
+  .stroke("#ccc");
 
-      if (fs.existsSync(carPath)) {
-        doc.image(carPath, x + 20, y + 150, {
-          width: 460,
-        });
-      }
+// Car Image
+const carPath = path.join(__dirname, "../assets/car.png");
+
+if (fs.existsSync(carPath)) {
+  doc.image(carPath, x + 15, y + 110, {
+    width: 230,
+  });
+}
 
       // =========================
       // 👉 NEXT POSITION
       // =========================
 
-      y += 260;
+      x += 280;
+
+      if (x > 300) {
+        x = 40;
+        y += 200;
+      }
 
       if (y > 700) {
         doc.addPage();
