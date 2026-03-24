@@ -305,19 +305,9 @@ doc
 doc
   .text("• Contact Owner Directly", x + 110, y + 70);
 
-doc
-  .fillColor("#FAFAFA")
-  .roundedRect(x, y, cardWidth, cardHeight, 10)
-  .fill();
-
-doc
-  .lineWidth(1.5)
-  .strokeColor("#000")
-  .roundedRect(x, y, cardWidth, cardHeight, 10)
-  .stroke();
 
 // Car Image
-const carPath = path.join(__dirname, "../assets/car.png");
+const carPath = path.join(__dirname, "../assets/car1.png");
 
 if (fs.existsSync(carPath)) {
   doc.image(carPath, x + 15, y + 110, {
