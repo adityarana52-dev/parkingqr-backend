@@ -224,112 +224,126 @@ router.get("/dashboard", async (req, res) => {
 
 router.get("/download-showroom-qr/:showroomId", async (req, res) => {
   try {
+    const PDFDocument = require("pdfkit");
     const path = require("path");
-    const fs = require("fs");
 
     const requestId = req.params.showroomId;
 
-    console.log("REQ ID 👉", requestId);
-
-    const qrs = await QrCode.find({
-      requestId: requestId
-    });
-
-    console.log("QR COUNT 👉", qrs.length);
+    const qrs = await QrCode.find({ requestId });
 
     if (!qrs.length) {
-      return res.status(404).json({
-        message: "No QR codes found"
-      });
+      return res.status(404).json({ message: "No QR codes found" });
     }
 
     const doc = new PDFDocument({ margin: 20 });
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=qr-batch.pdf"
-    );
+    res.setHeader("Content-Disposition", "attachment; filename=qr-batch.pdf");
 
     doc.pipe(res);
 
-    let x = 40;
-    let y = 40;
+    // ===== GRID SETTINGS =====
+    let x = 20;
+    let y = 20;
 
-    for (let qr of qrs) {
+    const cardWidth = 180;
+    const cardHeight = 260;
+    const gap = 10;
 
-      const publicUrl =
-        `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+    for (let i = 0; i < qrs.length; i++) {
+      const qr = qrs[i];
+
+      const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
 
       const qrImage = await QRCode.toDataURL(publicUrl);
-
       const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
-
       const imgBuffer = Buffer.from(base64Data, "base64");
 
       // =========================
-      // 🔥 PREMIUM CARD DESIGN
+      // CARD BACKGROUND
       // =========================
-
-      const cardWidth = 260;
-      const cardHeight = 180;
-
-      const qrSize = 90;
-
-      // Border
-doc
-  .lineWidth(1)
-  .strokeColor("#ccc")
-  .rect(x + 10, y + 20, qrSize + 10, qrSize + 10)
-  .stroke();
-
-// QR LEFT
-doc.rect(x + 10, y + 20, qrSize + 10, qrSize + 10).fill("#fff");
-
-doc.image(imgBuffer, x + 15, y + 25, {
-  width: qrSize,
-});
-
-// TEXT RIGHT
-doc
-  .font("Helvetica")
-  .fontSize(12)
-  .fillColor("#000")
-  .text("• Move Vehicle Request", x + 110, y + 25);
-
-doc
-  .font("Helvetica")
-  .fontSize(11)
-  .text("• Towing your vehicle", x + 110, y + 50);
-
-doc
-  .text("• Contact Owner Directly", x + 110, y + 70);
-
-
-// Car Image
-const carPath = path.join(__dirname, "../assets/car1.png");
-
-if (fs.existsSync(carPath)) {
-  doc.image(carPath, x + 15, y + 110, {
-    width: 230,
-  });
-}
+      doc
+        .roundedRect(x, y, cardWidth, cardHeight, 15)
+        .fill("#000");
 
       // =========================
-      // 👉 NEXT POSITION
+      // WHITE TOP SECTION
       // =========================
+      doc
+        .roundedRect(x, y, cardWidth, 170, 15)
+        .fill("#fff");
 
-      x += 280;
+      // =========================
+      // QR
+      // =========================
+      doc.image(imgBuffer, x + 25, y + 20, {
+        width: 130,
+      });
 
-      if (x > 300) {
-        x = 40;
-        y += 200;
+      // =========================
+      // SCAN TEXT
+      // =========================
+      doc
+        .fillColor("#000")
+        .fontSize(14)
+        .font("Helvetica-Bold")
+        .text("Scan to Contact", x, y + 155, {
+          width: cardWidth,
+          align: "center",
+        });
+
+      // =========================
+      // ICON ROW (emoji based)
+      // =========================
+      doc.fontSize(10).fillColor("#000");
+
+      doc.text("🚗 Move", x + 10, y + 175);
+      doc.text("🚛 Tow", x + 90, y + 175);
+
+      doc.text("📍 Location", x + 10, y + 190);
+      doc.text("📞 Emergency", x + 90, y + 190);
+
+      // =========================
+      // CURVE EFFECT (fake)
+      // =========================
+      doc
+        .circle(x + cardWidth / 2, y + 190, 120)
+        .fill("#000");
+
+      // =========================
+      // CAR IMAGE
+      // =========================
+      const carPath = path.join(__dirname, "../assets/car2.png");
+
+      doc.image(carPath, x + 10, y + 165, {
+        width: 160,
+      });
+
+      // =========================
+      // BOTTOM TEXT
+      // =========================
+      doc
+        .fillColor("#fff")
+        .fontSize(8)
+        .text("Move • Tow • Location • Emergency", x, y + 230, {
+          width: cardWidth,
+          align: "center",
+        });
+
+      // =========================
+      // POSITION (3 PER ROW)
+      // =========================
+      x += cardWidth + gap;
+
+      if ((i + 1) % 3 === 0) {
+        x = 20;
+        y += cardHeight + gap;
       }
 
       if (y > 700) {
         doc.addPage();
-        x = 40;
-        y = 40;
+        x = 20;
+        y = 20;
       }
     }
 
@@ -337,10 +351,7 @@ if (fs.existsSync(carPath)) {
 
   } catch (error) {
     console.log("QR Download Error:", error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
