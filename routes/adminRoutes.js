@@ -278,9 +278,10 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
       // Border
 doc
-  .lineWidth(1.5)
-  .roundedRect(x, y, cardWidth, cardHeight, 10)
-  .stroke("#000");
+  .lineWidth(1)
+  .strokeColor("#ccc")
+  .rect(x + 10, y + 20, qrSize + 10, qrSize + 10)
+  .stroke();
 
 // QR LEFT
 doc.rect(x + 10, y + 20, qrSize + 10, qrSize + 10).fill("#fff");
@@ -291,23 +292,29 @@ doc.image(imgBuffer, x + 15, y + 25, {
 
 // TEXT RIGHT
 doc
-  .font("Helvetica-Bold")
+  .font("Helvetica")
   .fontSize(12)
   .fillColor("#000")
-  .text("Move Vehicle Request", x + 110, y + 25);
+  .text("• Move Vehicle Request", x + 110, y + 25);
 
 doc
   .font("Helvetica")
   .fontSize(11)
-  .text("🚗 Towing your vehicle", x + 110, y + 50);
+  .text("• Towing your vehicle", x + 110, y + 50);
 
 doc
-  .text("📞 Contact Owner Directly", x + 110, y + 70);
+  .text("• Contact Owner Directly", x + 110, y + 70);
 
-// Divider
-doc.moveTo(x + 10, y + 105)
-  .lineTo(x + 250, y + 105)
-  .stroke("#ccc");
+doc
+  .fillColor("#FAFAFA")
+  .roundedRect(x, y, cardWidth, cardHeight, 10)
+  .fill();
+
+doc
+  .lineWidth(1.5)
+  .strokeColor("#000")
+  .roundedRect(x, y, cardWidth, cardHeight, 10)
+  .stroke();
 
 // Car Image
 const carPath = path.join(__dirname, "../assets/car.png");
