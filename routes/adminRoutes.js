@@ -253,54 +253,49 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
 
     for (let i = 0; i < qrs.length; i++) {
-      const qr = qrs[i];
 
-      const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+  const qr = qrs[i];
 
-      const qrImage = await QRCode.toDataURL(publicUrl);
+  const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
 
-      const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
-      const qrBuffer = Buffer.from(base64Data, "base64");
+  const qrImage = await QRCode.toDataURL(publicUrl);
+  const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
+  const qrBuffer = Buffer.from(base64Data, "base64");
 
-      
+  // 👉 SAME QR 2 TIMES
+  for (let copy = 0; copy < 2; copy++) {
 
-      // 🔥 TEMPLATE (same as design)
-      doc.image(templatePath, x, y -40, {
-        width: cardWidth,
-      });
+    // TEMPLATE
+    doc.image(templatePath, x, y -40, {
+      width: cardWidth,
+    });
 
-      // =========================
-      // 🔥 PERFECT QR POSITION FIX
-      // =========================
+    // QR
+    const qrSize = 125;
+    const qrX = x + (cardWidth - qrSize) / 2;
+    const qrY = y + 30;
 
-      const qrSize = 125;   // 👈 size thoda control me
-      const qrX = x + (cardWidth - qrSize) / 2;  // 👈 center align
-      const qrY = y + 35;   // 👈 TOP GAP FIX (important)
+    doc.image(qrBuffer, qrX, qrY, {
+      width: qrSize,
+    });
 
-      doc.image(qrBuffer, qrX, qrY, {
-        width: qrSize,
-      });
+    // 👉 NEXT POSITION
+    x += cardWidth + gapX;
 
-      // =========================
-      // 👉 NEXT POSITION (3 per row))
-      // =========================
-
-      const gapX = 10;
-      const gapY = 10;
-
-      x += cardWidth + gapX;
-
-      if ((i + 1) % 3 === 0) {
-        x = 10;
-        y += cardHeight + gapY;
-      }
-
-      if (y + cardHeight > 842) {
-        doc.addPage();
-        x = 10;
-        y = 5;
-      }
+    // 👉 2 per row
+    if ((copy + 1) % 2 === 0) {
+      x = 10;
+      y += cardHeight + gapY;
     }
+
+    // 👉 PAGE BREAK
+    if (y + cardHeight > 842) {
+      doc.addPage();
+      x = 10;
+      y = 5;
+    }
+  }
+}
 
     doc.end();
 
