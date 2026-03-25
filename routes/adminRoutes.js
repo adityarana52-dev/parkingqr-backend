@@ -233,7 +233,10 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
     const qrs = await QrCode.find({ requestId });
 
-    const doc = new PDFDocument({ margin: 2 });
+    const doc = new PDFDocument({
+        size: "A4",
+        margin: 0,
+      });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=qr.pdf");
@@ -242,8 +245,8 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
     const templatePath = path.join(__dirname, "../assets/template.png");
 
-    let x = 20;
-    let y = 10;
+    let x = 10;
+    let y = 5;
 
     const cardWidth = 180;
     const cardHeight = 260;
@@ -279,17 +282,20 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       // 👉 NEXT POSITION (3 per row)
       // =========================
 
-      x += 190;
+      const gapX = 10;
+      const gapY = 10;
+
+      x += cardWidth + gapX;
 
       if ((i + 1) % 3 === 0) {
-        x = 20;
-        y += 270;
+        x = 10;
+        y += cardHeight + gapY;
       }
 
-      if (y > 700) {
+      if (y + cardHeight > 842) {
         doc.addPage();
-        x = 20;
-        y = 20;
+        x = 10;
+        y = 5;
       }
     }
 
