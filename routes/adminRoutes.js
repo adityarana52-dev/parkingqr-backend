@@ -251,6 +251,8 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
     const cardWidth = 180;
     const cardHeight = 260;
 
+    const gapX = 10;
+    const gapY = 10;
 
     for (let i = 0; i < qrs.length; i++) {
 
@@ -301,7 +303,9 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Error" });
+    if (!res.headersSent) {
+  res.status(500).json({ message: "Error" });
+}
   }
 });
 
