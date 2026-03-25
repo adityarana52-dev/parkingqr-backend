@@ -9,6 +9,9 @@ const SalesPerson = require("../models/SalesPerson");
 const PDFDocument = require("pdfkit");
 const QRCode = require("qrcode");
 const ShowroomLead = require("../models/ShowroomLead");
+const path = require("path");
+
+
 
 const StateCounter = require("../models/StateCounter");
 const bcrypt = require("bcryptjs");
@@ -222,9 +225,7 @@ router.get("/dashboard", async (req, res) => {
 });
 
 
-const PDFDocument = require("pdfkit");
-const path = require("path");
-const QRCode = require("qrcode");
+
 
 router.get("/download-showroom-qr/:showroomId", async (req, res) => {
   try {
