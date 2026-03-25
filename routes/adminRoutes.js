@@ -279,7 +279,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       });
 
       // =========================
-      // 👉 NEXT POSITION (3 per row)
+      // 👉 NEXT POSITION (3 per row))
       // =========================
 
       const gapX = 10;
