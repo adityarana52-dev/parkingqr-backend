@@ -269,7 +269,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
       const qrSize = 125;   // 👈 size thoda control me
       const qrX = x + (cardWidth - qrSize) / 2;  // 👈 center align
-      const qrY = y + 55;   // 👈 TOP GAP FIX (important)
+      const qrY = y + 65;   // 👈 TOP GAP FIX (important)
 
       doc.image(qrBuffer, qrX, qrY, {
         width: qrSize,
