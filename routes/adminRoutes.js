@@ -262,7 +262,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
       const qrBuffer = Buffer.from(base64Data, "base64");
 
-      doc.rect(x, y, cardWidth, cardHeight).stroke("red");
+      
 
       // 🔥 TEMPLATE (same as design)
       doc.image(templatePath, x, y -40, {
@@ -275,7 +275,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
       const qrSize = 125;   // 👈 size thoda control me
       const qrX = x + (cardWidth - qrSize) / 2;  // 👈 center align
-      const qrY = y + 70;   // 👈 TOP GAP FIX (important)
+      const qrY = y + 35;   // 👈 TOP GAP FIX (important)
 
       doc.image(qrBuffer, qrX, qrY, {
         width: qrSize,
