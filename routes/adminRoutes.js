@@ -233,7 +233,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
     const qrs = await QrCode.find({ requestId });
 
-    const doc = new PDFDocument({ margin: 20 });
+    const doc = new PDFDocument({ margin: 2 });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=qr.pdf");
@@ -243,7 +243,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
     const templatePath = path.join(__dirname, "../assets/template.png");
 
     let x = 20;
-    let y = 20;
+    let y = 10;
 
     const cardWidth = 180;
     const cardHeight = 260;
