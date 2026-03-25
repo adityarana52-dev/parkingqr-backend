@@ -265,7 +265,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       doc.rect(x, y, cardWidth, cardHeight).stroke("red");
 
       // 🔥 TEMPLATE (same as design)
-      doc.image(templatePath, x, y, {
+      doc.image(templatePath, x, y -40, {
         width: cardWidth,
       });
 
