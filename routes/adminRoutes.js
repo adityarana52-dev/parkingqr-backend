@@ -251,6 +251,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
     const cardWidth = 180;
     const cardHeight = 260;
 
+
     for (let i = 0; i < qrs.length; i++) {
       const qr = qrs[i];
 
@@ -260,6 +261,8 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
       const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
       const qrBuffer = Buffer.from(base64Data, "base64");
+
+      doc.rect(x, y, cardWidth, cardHeight).stroke("red");
 
       // 🔥 TEMPLATE (same as design)
       doc.image(templatePath, x, y, {
