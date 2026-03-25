@@ -384,7 +384,8 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
     `;
 
    const browser = await puppeteer.launch({
-      executablePath: "/usr/bin/google-chrome-stable",
+      executablePath: "/usr/bin/chromium",
+      headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 s
