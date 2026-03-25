@@ -258,22 +258,32 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
       const qrBuffer = Buffer.from(base64Data, "base64");
 
-      // 🔥 template
+      // 🔥 TEMPLATE (same as design)
       doc.image(templatePath, x, y, {
         width: cardWidth,
       });
 
-      // 🔥 QR overlay (adjust position)
-      doc.image(qrBuffer, x + 25, y + 25, {
-        width: 130,
+      // =========================
+      // 🔥 PERFECT QR POSITION FIX
+      // =========================
+
+      const qrSize = 115;   // 👈 size thoda control me
+      const qrX = x + (cardWidth - qrSize) / 2;  // 👈 center align
+      const qrY = y + 40;   // 👈 TOP GAP FIX (important)
+
+      doc.image(qrBuffer, qrX, qrY, {
+        width: qrSize,
       });
 
-      // 👉 next position (3 per row)
+      // =========================
+      // 👉 NEXT POSITION (3 per row)
+      // =========================
+
       x += 190;
 
       if ((i + 1) % 3 === 0) {
         x = 20;
-        y += 280;
+        y += 270;
       }
 
       if (y > 700) {
