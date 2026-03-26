@@ -258,7 +258,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
   const qr = qrs[i];
 
-  const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+  const publicUrl = `https://parkingqr-backend.onrender.com/api/qr/public/${qr.qrId}`;
 
   const qrImage = await QRCode.toDataURL(publicUrl);
   const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
