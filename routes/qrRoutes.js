@@ -441,6 +441,10 @@ router.get("/public/:qrId", async (req, res) => {
   return res.status(400).send("<h2>QR Not Activated Yet</h2>");
 }
 
+if (!qr.assignedTo) {
+  return res.status(400).send("<h2>QR Not Activated Yet</h2>");
+}
+
     // Mask mobile number
     const mobile = qr.assignedTo?.mobile;
 
@@ -573,8 +577,8 @@ router.post("/move-request", async (req, res) => {
 
     const qr = await QrCode.findOne({ qrId });
 
-    if (!qr || !qr.isAssigned) {
-      return res.status(400).json({ message: "Invalid QR" });
+    if (!qr || qr.qrStatus !== "activated") {
+  return res.status(400).json({ message: "QR Not Activated Yet" });
     }
 
     // ⏱ 2-minute spam protection (same logic)
