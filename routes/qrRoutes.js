@@ -423,6 +423,7 @@ if (salesPerson && salesPerson !== "null") {
 });
 
 
+
 // ✅ Public QR View (No Login Required)
 // ✅ Public QR View (Secure – Number Masked)
 router.get("/public/:qrId", async (req, res) => {
@@ -437,13 +438,9 @@ router.get("/public/:qrId", async (req, res) => {
       return res.status(404).send("<h2>QR Not Found</h2>");
     }
 
-    if (qr.qrStatus !== "activated") {
-  return res.status(400).send("<h2>QR Not Activated Yet</h2>");
-}
-
-if (!qr.assignedTo) {
-  return res.status(400).send("<h2>QR Not Activated Yet</h2>");
-}
+    if (!qr.isAssigned) {
+      return res.status(400).send("<h2>QR Not Activated Yet</h2>");
+    }
 
     // Mask mobile number
     const mobile = qr.assignedTo?.mobile;
@@ -972,7 +969,7 @@ let y = 40;
 
 for(const qr of savedQrs){
 
-const publicUrl = `https://parkingqr-backend.onrender.com/api/qr/public/${qr.qrId}`;
+const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
 const qrBuffer = await QRCode.toBuffer(publicUrl);
 
 doc.image(qrBuffer,x,y,{width:120});
