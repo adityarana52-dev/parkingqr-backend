@@ -267,6 +267,12 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
   // 👉 SAME QR 2 TIMES
   for (let copy = 0; copy < 2; copy++) {
 
+    doc
+  .lineWidth(0.5)
+  .strokeColor("#999")
+  .rect(x, y, cardWidth, cardHeight)
+  .stroke();
+
     // TEMPLATE
     doc.image(templatePath, x, y -40, {
       width: cardWidth,
