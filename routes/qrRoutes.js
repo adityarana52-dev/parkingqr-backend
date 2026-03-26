@@ -438,8 +438,8 @@ router.get("/public/:qrId", async (req, res) => {
       return res.status(404).send("<h2>QR Not Found</h2>");
     }
 
-    if (!qr.isAssigned) {
-      return res.status(400).send("<h2>QR Not Activated Yet</h2>");
+    if (qr.qrStatus !== "activated" || !qr.assignedTo) {
+  return res.status(400).send("<h2>QR Not Activated Yet</h2>");
     }
 
     // Mask mobile number
