@@ -972,7 +972,7 @@ let y = 40;
 
 for(const qr of savedQrs){
 
-const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+const publicUrl = `https://parkingqr-backend.onrender.com/api/qr/public/${qr.qrId}`;
 const qrBuffer = await QRCode.toBuffer(publicUrl);
 
 doc.image(qrBuffer,x,y,{width:120});
