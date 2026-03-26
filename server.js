@@ -55,9 +55,9 @@ app.get("/scan/:qrId", async (req, res) => {
       return res.send("QR NOT FOUND");
     }
 
-    if (!qr.assignedTo) {
-      return res.send("QR NOT ACTIVATED YET");
-    }
+    if (qr.qrStatus !== "activated" || !qr.assignedTo) {
+  return res.send("QR Not Activated Yet");
+}
 
     const user = qr.assignedTo;
 
