@@ -829,9 +829,9 @@ res.status(500).json({message:"Server error"});
 });
 
 
-router.get("/activated-qrs", async (req, res) => {
+router.get("/activated-qrs", protectShowroom, async (req, res) => {
   try {
-    const showroomId = req.user.id;
+    const showroomId = req.showroom.id;
 
     const qrs = await QrCode.find({
       showroom: showroomId,
