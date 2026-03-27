@@ -828,4 +828,22 @@ res.status(500).json({message:"Server error"});
 
 });
 
+
+router.get("/activated-qrs", async (req, res) => {
+  try {
+    const showroomId = req.user.id;
+
+    const qrs = await QrCode.find({
+      showroom: showroomId,
+      qrStatus: "activated"
+    }).populate("assignedTo", "mobile");
+
+    res.json(qrs);
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error fetching activated QRs" });
+  }
+});
+
 module.exports = router;
