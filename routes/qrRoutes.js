@@ -962,25 +962,70 @@ res.setHeader(
 
 doc.pipe(res);
 
+const path = require("path");
+const templatePath = path.join(__dirname, "../assets/template.png");
+
 const QRCode = require("qrcode");
 
-let x = 40;
-let y = 40;
+let x = 10;
+let y = 5;
 
-for(const qr of savedQrs){
+const cardWidth = 180;
+const cardHeight = 260;
 
-const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
-const qrBuffer = await QRCode.toBuffer(publicUrl);
+const gapX = 10;
+const gapY = 10;
 
-doc.image(qrBuffer,x,y,{width:120});
+for (let i = 0; i < savedQrs.length; i++) {
 
-y += 140;
+  const qr = savedQrs[i];
 
-if(y > 700){
-doc.addPage();
-y = 40;
-}
+  const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
 
+  const qrImage = await QRCode.toDataURL(publicUrl);
+  const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
+  const qrBuffer = Buffer.from(base64Data, "base64");
+
+  // 👉 SAME QR 2 COPIES
+  for (let copy = 0; copy < 2; copy++) {
+
+    // border
+    doc
+      .lineWidth(0.5)
+      .strokeColor("#999")
+      .rect(x, y, cardWidth, cardHeight)
+      .stroke();
+
+    // TEMPLATE
+    doc.image(templatePath, x, y - 40, {
+      width: cardWidth,
+    });
+
+    // QR CENTER
+    const qrSize = 125;
+    const qrX = x + (cardWidth - qrSize) / 2;
+    const qrY = y + 30;
+
+    doc.image(qrBuffer, qrX, qrY, {
+      width: qrSize,
+    });
+
+    // 👉 NEXT POSITION
+    x += cardWidth + gapX;
+
+    // 👉 2 per row
+    if ((copy + 1) % 2 === 0) {
+      x = 10;
+      y += cardHeight + gapY;
+    }
+
+    // 👉 PAGE BREAK
+    if (y + cardHeight > 842) {
+      doc.addPage();
+      x = 10;
+      y = 5;
+    }
+  }
 }
 
 doc.end();
