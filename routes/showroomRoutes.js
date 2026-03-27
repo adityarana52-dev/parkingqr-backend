@@ -836,7 +836,9 @@ router.get("/activated-qrs", protectShowroom, async (req, res) => {
     const qrs = await QrCode.find({
       showroom: showroomId,
       qrStatus: "activated"
-    }).populate("assignedTo", "mobile");
+    })
+    .sort({ createdAt: -1 }) // 🔥 latest first
+    .populate("assignedTo", "mobile");
 
     res.json(qrs);
 
