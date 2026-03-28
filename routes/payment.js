@@ -208,6 +208,7 @@ router.post("/verify-shipping", authMiddleware, async (req, res) => {
       city,
       state,
       pincode,
+      vehicleType
     } = req.body;
 
     // update user city
@@ -266,6 +267,7 @@ const order = await QrOrder.create({
   state,
   pincode,
   paymentId: razorpay_payment_id,
+  vehicleType
 });
 
       // find unused direct QR

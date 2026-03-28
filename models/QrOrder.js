@@ -20,10 +20,17 @@ const qrOrderSchema = new mongoose.Schema(
       default: "processing",
     },
 
+    vehicleType: {
+  type: String,
+  enum: ["car","bike","scooty","auto","other"],
+  required: true
+},
+
         qrId:{
     type:String,
     default:null
     },
+
 
     paymentId: String,
 
