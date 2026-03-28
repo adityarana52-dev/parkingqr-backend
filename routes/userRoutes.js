@@ -18,6 +18,7 @@ router.get("/profile", protect, async (req, res) => {
      role: req.user.role,
     subscriptionActive: req.user.subscriptionActive,
     subscriptionExpiresAt: req.user.subscriptionExpiresAt,
+    vehicleType: req.user.vehicleType,
   });
 });
 
@@ -255,6 +256,27 @@ message:"Server error"
 
 }
 
+});
+
+
+// ✅ SAVE VEHICLE TYPE
+router.post("/set-vehicle", protect, async (req, res) => {
+  try {
+    const { vehicleType } = req.body;
+
+    if (!vehicleType) {
+      return res.status(400).json({ message: "Vehicle type required" });
+    }
+
+    req.user.vehicleType = vehicleType;
+    await req.user.save();
+
+    res.json({ message: "Vehicle type saved" });
+
+  } catch (error) {
+    console.log("Vehicle Save Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 module.exports = router;

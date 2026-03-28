@@ -27,6 +27,12 @@ trim:true,
 default:null
 },
 
+vehicleType: {
+  type: String,
+  enum: ["car", "bike", "scooty", "auto", "other"],
+  default: null
+},
+
   role: {
       type: String,
       enum: ["user", "admin"],
