@@ -20,10 +20,16 @@ const razorpay = new Razorpay({
 router.post("/create-order", authMiddleware, async (req, res) => {
   try {
 
-    const amount = 399; // ₹499 fixed plan for now
+    const { vehicleType } = req.body;  // 👈 ADD THIS
+
+    let amount = 399;
+
+    if (vehicleType === "bike" || vehicleType === "scooty") {
+      amount = 299;
+    }
 
     const options = {
-      amount: amount * 100, // Razorpay needs paise
+      amount: amount * 100,
       currency: "INR",
       receipt: "receipt_" + Date.now(),
     };
@@ -35,6 +41,7 @@ router.post("/create-order", authMiddleware, async (req, res) => {
       amount: order.amount,
       currency: order.currency,
       key: process.env.RAZORPAY_KEY_ID,
+      finalAmount: amount   // 👈 ADD THIS (important)
     });
 
   } catch (error) {
@@ -67,14 +74,21 @@ router.post("/verify", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Invalid signature" });
     }
 
-    // 💰 Store payment record
-      await Payment.create({
-        userId: req.user.id,
-        razorpay_payment_id,
-        razorpay_order_id,
-        amount: 399, // for now fixed
-        status: "success",
-      });
+    const { vehicleType } = req.body;
+
+        let amount = 399;
+
+        if (vehicleType === "bike" || vehicleType === "scooty") {
+          amount = 299;
+        }
+
+        await Payment.create({
+          userId: req.user.id,
+          razorpay_payment_id,
+          razorpay_order_id,
+          amount: amount,   // 👈 dynamic
+          status: "success",
+        });
 
     // ✅ Payment verified — activate subscription
     const expiry = new Date();
