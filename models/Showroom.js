@@ -55,6 +55,12 @@ const showroomSchema = new mongoose.Schema(
       required:true
       },
 
+          vehicleType: {
+      type: String,
+      enum: ["car","bike","scooty","auto","other","mixed"],
+      default: "car"
+    },
+
     // 🔐 LOGIN FIELDS
     username: {
       type: String,

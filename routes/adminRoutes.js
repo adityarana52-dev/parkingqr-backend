@@ -68,7 +68,8 @@ router.patch("/approve-request/:id", async (req, res) => {
         qrId,
         sourceType: "showroom",
         showroom: request.showroom,
-        requestId: request._id   // ✅ ADD
+        requestId: request._id,   // ✅ ADD,
+        vehicleType: request.vehicleType   // 👈 ADD
       });
 
     }
@@ -243,7 +244,10 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
     doc.pipe(res);
 
-    const templatePath = path.join(__dirname, "../assets/template.png");
+    const templatePath =
+      qrs[0]?.vehicleType === "bike"
+    ? path.join(__dirname, "../assets/bike.png")
+    : path.join(__dirname, "../assets/template.png");
 
     let x = 10;
     let y = 5;

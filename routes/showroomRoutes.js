@@ -31,7 +31,8 @@ router.post("/create", async (req, res) => {
         phone,
         contactPerson,
         username,
-        password
+        password,
+        vehicleType
         } = req.body;
 
     if (!name || !city || !stateCode || !username || !password) {
@@ -73,7 +74,9 @@ router.post("/create", async (req, res) => {
           pincode,
 
           username,
-          password: hashedPassword
+          password: hashedPassword,
+
+          vehicleType //Add this
         });
 
     res.status(201).json(showroom);
@@ -312,9 +315,12 @@ router.post("/request-qr", protectShowroom, async (req, res) => {
       });
     }
 
+    const showroom = await Showroom.findById(req.showroom.id);
+
     const request = await QrRequest.create({
       showroom: req.showroom.id,
-      quantity
+      quantity,
+      vehicleType: showroom.vehicleType   // 👈 AUTO
     });
 
     res.status(201).json({

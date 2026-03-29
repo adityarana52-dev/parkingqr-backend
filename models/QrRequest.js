@@ -13,6 +13,11 @@ const qrRequestSchema = new mongoose.Schema(
     required: true
   },
 
+  vehicleType: {
+  type: String,
+  enum: ["car","bike","scooty","auto","other"]
+},
+
   status: {
     type: String,
     enum: ["pending", "approved", "rejected"],
