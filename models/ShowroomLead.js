@@ -22,6 +22,12 @@ type:String,
 required:true
 },
 
+ vehicleType: {
+      type: String,
+      enum: ["car","bike","scooty","auto","other"],
+      
+    },
+
 stateCode:{
 type:String,
 required:true
