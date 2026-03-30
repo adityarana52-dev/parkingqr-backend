@@ -282,6 +282,7 @@ const order = await QrOrder.create({
         qr.assignedTo = req.user._id;
         qr.orderId = order._id;
         qr.qrStatus = "assigned";
+        qr.vehicleType = vehicleType;
 
         await qr.save();
 

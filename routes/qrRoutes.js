@@ -10,6 +10,7 @@ const QRCodeLib = require("qrcode");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const SalesPerson = require("../models/SalesPerson");
+const QrOrder = require("../models/QrOrder");
 
 console.log("QR ROUTES LOADED");
 
@@ -905,7 +906,24 @@ router.post("/assign-direct-order", async (req, res) => {
 
     const qrIds = availableQrs.map(q => q._id);
 
-    const user = await User.findById(userId);
+    const [user, order] = await Promise.all([
+      User.findById(userId).select("vehicleType"),
+      QrOrder.findById(orderId).select("vehicleType")
+    ]);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found"
+      });
+    }
+
+    const resolvedVehicleType = order.vehicleType || user.vehicleType;
 
     // 🔥 Assign QR to user order
     await QrCode.updateMany(
@@ -915,7 +933,7 @@ router.post("/assign-direct-order", async (req, res) => {
         orderId: orderId,
         qrStatus: "assigned",
         isAssigned: false,
-        vehicleType: user.vehicleType   // 👈 🔥 MAIN LINE
+        vehicleType: resolvedVehicleType
       }
     );
 
@@ -943,10 +961,13 @@ router.get("/download-order/:orderId", async (req, res) => {
 
     const { orderId } = req.params;
 
-    const savedQrs = await QrCode.find({
-      qrStatus: "assigned",
-      orderId: orderId
-    });
+    const [savedQrs, order] = await Promise.all([
+      QrCode.find({
+        qrStatus: "assigned",
+        orderId: orderId
+      }),
+      QrOrder.findById(orderId).select("vehicleType")
+    ]);
 
     if (savedQrs.length === 0) {
       return res.status(404).json({
@@ -954,7 +975,7 @@ router.get("/download-order/:orderId", async (req, res) => {
       });
     }
 
-    const vehicleType = savedQrs[0]?.vehicleType || "car";
+    const vehicleType = savedQrs[0]?.vehicleType || order?.vehicleType || "car";
 
     console.log("ORDER PDF VEHICLE TYPE 👉", vehicleType);
 
