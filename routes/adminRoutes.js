@@ -285,7 +285,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
           });
 
           // QR (same as before)
-          const qrSize = 130;
+          const qrSize = 120;
           const qrX = x + (cardWidth - qrSize) / 2;
           const qrY = y + 27;
 
