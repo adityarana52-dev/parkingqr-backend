@@ -244,10 +244,28 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
 
     doc.pipe(res);
 
-    const templatePath =
-      qrs[0]?.vehicleType === "bike"
-    ? path.join(__dirname, "../assets/bike.png")
-    : path.join(__dirname, "../assets/template.png");
+    if (!qrs.length) {
+       return res.status(404).json({ message: "No QR found" });
+    }
+
+    const vehicleType = qrs[0]?.vehicleType || "car";
+
+        console.log("PDF VEHICLE TYPE 👉", vehicleType);
+
+        let templatePath;
+
+        if (vehicleType === "bike" || vehicleType === "scooty") {
+          templatePath = path.join(__dirname, "../assets/bike.png");
+        } 
+        else if (vehicleType === "auto") {
+          templatePath = path.join(__dirname, "../assets/bike.png");
+        } 
+        else if (vehicleType === "other") {
+          templatePath = path.join(__dirname, "../assets/template.png");
+        } 
+        else {
+          templatePath = path.join(__dirname, "../assets/template.png"); // car
+        }
 
     let x = 10;
     let y = 5;
