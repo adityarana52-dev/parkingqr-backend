@@ -317,8 +317,8 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       const cardWidth = 170;   // 👈 yaha change karna
       const cardHeight = 240;  // 👈 yaha change karna
 
-      const qrSize = 110;      // 👈 yaha change karna
-      const qrOffsetY = 45;    // 👈 yaha change karna
+      const qrSize = 75;      // 👈 yaha change karna
+      const qrOffsetY = 25;    // 👈 yaha change karna
       const templateOffsetY = 0; // 👈 yaha change karna
 
       for (let i = 0; i < qrs.length; i++) {
