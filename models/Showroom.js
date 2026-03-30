@@ -57,7 +57,7 @@ const showroomSchema = new mongoose.Schema(
 
           vehicleType: {
       type: String,
-      enum: ["car","bike","scooty","auto","other","mixed"],
+      enum: ["car","bike","scooty","auto","other"],
       
     },
 

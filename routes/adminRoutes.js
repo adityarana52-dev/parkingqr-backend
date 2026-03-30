@@ -385,7 +385,9 @@ router.post("/convert-lead/:id", async (req, res) => {
       pincode: lead.pincode,
 
       username,
-      password: hashedPassword
+      password: hashedPassword,
+
+      vehicleType: lead.vehicleType   // 👈 🔥 MAIN FIX
 
     });
 
