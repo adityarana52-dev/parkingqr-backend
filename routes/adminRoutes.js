@@ -270,10 +270,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
         const qr = qrs[i];
 
         const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
-        const qrImage = await QRCode.toDataURL(publicUrl, {
-            margin: 1,   // 👈 border kam
-            width: 500   // 👈 better quality
-          });
+        const qrImage = await QRCode.toDataURL(publicUrl);
         const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
         const qrBuffer = Buffer.from(base64Data, "base64");
 
@@ -285,7 +282,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
           });
 
           // QR (same as before)
-          const qrSize = 120;
+          const qrSize = 125;
           const qrX = x + (cardWidth - qrSize) / 2;
           const qrY = y + 30;
 
@@ -320,8 +317,8 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       const cardWidth = 170;   // 👈 yaha change karna
       const cardHeight = 240;  // 👈 yaha change karna
 
-      const qrSize = 65;      // 👈 yaha change karna
-      const qrOffsetY = 43;    // 👈 yaha change karna
+      const qrSize = 70;      // 👈 yaha change karna
+      const qrOffsetY = 40;    // 👈 yaha change karna
       const templateOffsetY = 0; // 👈 yaha change karna
 
       for (let i = 0; i < qrs.length; i++) {
