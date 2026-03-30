@@ -11,6 +11,8 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const SalesPerson = require("../models/SalesPerson");
 const QrOrder = require("../models/QrOrder");
+const ServiceHistory = require("../models/ServiceHistory");
+const protectShowroom = require("../middleware/showroomAuthMiddleware");
 
 console.log("QR ROUTES LOADED");
 
@@ -1127,6 +1129,81 @@ router.get("/download-order/:orderId", async (req, res) => {
       message: "Server error"
     });
 
+  }
+});
+
+
+// Add service history from showroom panel
+router.post("/add-service", protectShowroom, async (req, res) => {
+  try {
+
+    const { qrId, serviceType, amount, serviceDate } = req.body;
+
+    if (!qrId || !serviceType) {
+      return res.status(400).json({
+        message: "QR ID and service type required"
+      });
+    }
+
+    // find QR
+    const qr = await QrCode.findOne({ qrId });
+
+    if (!qr || qr.qrStatus !== "activated") {
+      return res.status(404).json({
+        message: "QR not valid or not activated"
+      });
+    }
+
+    // create history entry
+    const service = await ServiceHistory.create({
+      qr: qr._id,
+      qrId: qr.qrId,
+      user: qr.assignedTo,
+      showroom: req.showroom._id,
+      serviceType,
+      amount,
+      serviceDate: serviceDate || new Date()
+    });
+
+    // 🔥 update last + next service
+    qr.lastServiceDate = service.serviceDate;
+
+    const next = new Date(service.serviceDate);
+    next.setMonth(next.getMonth() + 6);
+
+    qr.nextServiceDate = next;
+
+    await qr.save();
+
+    res.json({
+      message: "Service added successfully",
+      data: service
+    });
+
+  } catch (error) {
+    console.log("Add service error", error);
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+});
+
+//get Service hitory for user
+router.get("/service-history/:qrId", async (req, res) => {
+  try {
+
+    const { qrId } = req.params;
+
+    const history = await ServiceHistory.find({ qrId })
+      .sort({ createdAt: -1 });
+
+    res.json(history);
+
+  } catch (error) {
+    console.log("History error", error);
+    res.status(500).json({
+      message: "Server error"
+    });
   }
 });
 
