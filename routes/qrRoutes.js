@@ -905,6 +905,8 @@ router.post("/assign-direct-order", async (req, res) => {
 
     const qrIds = availableQrs.map(q => q._id);
 
+    const user = await User.findById(userId);
+
     // 🔥 Assign QR to user order
     await QrCode.updateMany(
       { _id: { $in: qrIds } },
@@ -912,7 +914,8 @@ router.post("/assign-direct-order", async (req, res) => {
         assignedTo: userId,
         orderId: orderId,
         qrStatus: "assigned",
-        isAssigned: false
+        isAssigned: false,
+        vehicleType: user.vehicleType   // 👈 🔥 MAIN LINE
       }
     );
 
@@ -935,105 +938,175 @@ router.post("/assign-direct-order", async (req, res) => {
 
 
 //download user direct qr
-router.get("/download-order/:orderId", async (req,res)=>{
+router.get("/download-order/:orderId", async (req, res) => {
+  try {
 
-try{
+    const { orderId } = req.params;
 
-const {orderId} = req.params;
-
-const savedQrs = await QrCode.find({
-qrStatus:"assigned",
-orderId:orderId
-});
-
-if(savedQrs.length === 0){
-return res.status(404).json({
-message:"No QR codes found"
-});
-}
-
-const doc = new PDFDocument({ margin:20 });
-
-res.setHeader("Content-Type","application/pdf");
-res.setHeader(
-"Content-Disposition",
-"attachment; filename=qr-stickers.pdf"
-);
-
-doc.pipe(res);
-
-const path = require("path");
-const templatePath = path.join(__dirname, "../assets/template.png");
-
-const QRCode = require("qrcode");
-
-let x = 10;
-let y = 5;
-
-const cardWidth = 180;
-const cardHeight = 260;
-
-const gapX = 10;
-const gapY = 10;
-
-for (let i = 0; i < savedQrs.length; i++) {
-
-  const qr = savedQrs[i];
-
-  const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
-
-  const qrImage = await QRCode.toDataURL(publicUrl);
-  const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
-  const qrBuffer = Buffer.from(base64Data, "base64");
-
-  // 👉 SAME QR 2 COPIES
-  for (let copy = 0; copy < 2; copy++) {
-
-    
-    // TEMPLATE
-    doc.image(templatePath, x, y - 40, {
-      width: cardWidth,
+    const savedQrs = await QrCode.find({
+      qrStatus: "assigned",
+      orderId: orderId
     });
 
-    // QR CENTER
-    const qrSize = 125;
-    const qrX = x + (cardWidth - qrSize) / 2;
-    const qrY = y + 30;
+    if (savedQrs.length === 0) {
+      return res.status(404).json({
+        message: "No QR codes found"
+      });
+    }
 
-    doc.image(qrBuffer, qrX, qrY, {
-      width: qrSize,
+    const vehicleType = savedQrs[0]?.vehicleType || "car";
+
+    console.log("ORDER PDF VEHICLE TYPE 👉", vehicleType);
+
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 0
     });
 
-    // 👉 NEXT POSITION
-    x += cardWidth + gapX;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=qr-stickers.pdf"
+    );
 
-    // 👉 2 per row
-    if ((copy + 1) % 2 === 0) {
-      x = 10;
-      y += cardHeight + gapY;
+    doc.pipe(res);
+
+    const path = require("path");
+    const QRCode = require("qrcode");
+
+    let x = 10;
+    let y = 5;
+
+    const gapX = 10;
+    const gapY = 10;
+
+    // =========================
+    // 🚗 CAR LAYOUT (UNCHANGED)
+    // =========================
+    if (vehicleType === "car") {
+
+      const templatePath = path.join(__dirname, "../assets/template.png");
+
+      const cardWidth = 180;
+      const cardHeight = 260;
+
+      for (let i = 0; i < savedQrs.length; i++) {
+
+        const qr = savedQrs[i];
+
+        const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+
+        const qrImage = await QRCode.toDataURL(publicUrl, {
+          margin: 1
+        });
+
+        const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
+        const qrBuffer = Buffer.from(base64Data, "base64");
+
+        for (let copy = 0; copy < 2; copy++) {
+
+          // TEMPLATE
+          doc.image(templatePath, x, y - 40, {
+            width: cardWidth,
+          });
+
+          // QR
+          const qrSize = 120;
+          const qrX = x + (cardWidth - qrSize) / 2;
+          const qrY = y + 27;
+
+          doc.image(qrBuffer, qrX, qrY, {
+            width: qrSize,
+          });
+
+          // POSITION
+          x += cardWidth + gapX;
+
+          if ((copy + 1) % 2 === 0) {
+            x = 10;
+            y += cardHeight + gapY;
+          }
+
+          if (y + cardHeight > 842) {
+            doc.addPage();
+            x = 10;
+            y = 5;
+          }
+        }
+      }
     }
 
-    // 👉 PAGE BREAK
-    if (y + cardHeight > 842) {
-      doc.addPage();
-      x = 10;
-      y = 5;
+    // =========================
+    // 🏍 BIKE / SCOOTY LAYOUT (SEPARATE)
+    // =========================
+    else {
+
+      const templatePath = path.join(__dirname, "../assets/bike.png");
+
+      const cardWidth = 170;
+      const cardHeight = 240;
+
+      const qrSize = 68;
+      const qrOffsetY = 37;
+      const templateOffsetY = 0;
+
+      for (let i = 0; i < savedQrs.length; i++) {
+
+        const qr = savedQrs[i];
+
+        const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+
+        const qrImage = await QRCode.toDataURL(publicUrl, {
+          margin: 1,
+          width: 500
+        });
+
+        const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
+        const qrBuffer = Buffer.from(base64Data, "base64");
+
+        for (let copy = 0; copy < 2; copy++) {
+
+          // TEMPLATE
+          doc.image(templatePath, x, y + templateOffsetY, {
+            width: cardWidth,
+          });
+
+          // QR
+          const qrX = x + (cardWidth - qrSize) / 2;
+          const qrY = y + qrOffsetY;
+
+          doc.image(qrBuffer, qrX, qrY, {
+            width: qrSize,
+          });
+
+          // POSITION
+          x += cardWidth + gapX;
+
+          if ((copy + 1) % 2 === 0) {
+            x = 10;
+            y += cardHeight + gapY;
+          }
+
+          if (y + cardHeight > 842) {
+            doc.addPage();
+            x = 10;
+            y = 5;
+          }
+        }
+      }
     }
+
+    doc.end();
+
+  } catch (error) {
+
+    console.log("Download order QR error", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
   }
-}
-
-doc.end();
-
-}catch(error){
-
-console.log("Download order QR error",error);
-
-res.status(500).json({
-message:"Server error"
-});
-
-}
-
 });
 
 module.exports = router;
