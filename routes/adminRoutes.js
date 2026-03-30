@@ -285,7 +285,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
           });
 
           // QR (same as before)
-          const qrSize = 125;
+          const qrSize = 120;
           const qrX = x + (cardWidth - qrSize) / 2;
           const qrY = y + 30;
 
@@ -320,8 +320,8 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       const cardWidth = 170;   // 👈 yaha change karna
       const cardHeight = 240;  // 👈 yaha change karna
 
-      const qrSize = 75;      // 👈 yaha change karna
-      const qrOffsetY = 40;    // 👈 yaha change karna
+      const qrSize = 65;      // 👈 yaha change karna
+      const qrOffsetY = 43;    // 👈 yaha change karna
       const templateOffsetY = 0; // 👈 yaha change karna
 
       for (let i = 0; i < qrs.length; i++) {
