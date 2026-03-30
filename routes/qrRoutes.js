@@ -1034,7 +1034,7 @@ router.get("/download-order/:orderId", async (req, res) => {
           // QR
           const qrSize = 120;
           const qrX = x + (cardWidth - qrSize) / 2;
-          const qrY = y + 24;
+          const qrY = y + 30;
 
           doc.image(qrBuffer, qrX, qrY, {
             width: qrSize,
