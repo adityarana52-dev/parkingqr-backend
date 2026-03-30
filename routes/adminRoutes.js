@@ -226,112 +226,150 @@ router.get("/dashboard", async (req, res) => {
 });
 
 
-
-
 router.get("/download-showroom-qr/:showroomId", async (req, res) => {
   try {
     const requestId = req.params.showroomId;
 
     const qrs = await QrCode.find({ requestId });
 
+    if (!qrs.length) {
+      return res.status(404).json({ message: "No QR found" });
+    }
+
+    const vehicleType = qrs[0]?.vehicleType || "car";
+
+    console.log("PDF VEHICLE TYPE 👉", vehicleType);
+
     const doc = new PDFDocument({
-        size: "A4",
-        margin: 0,
-      });
+      size: "A4",
+      margin: 0,
+    });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=qr.pdf");
 
     doc.pipe(res);
 
-    if (!qrs.length) {
-       return res.status(404).json({ message: "No QR found" });
-    }
-
-    const vehicleType = qrs[0]?.vehicleType || "car";
-
-        console.log("PDF VEHICLE TYPE 👉", vehicleType);
-
-        let templatePath;
-
-        if (vehicleType === "bike" || vehicleType === "scooty") {
-          templatePath = path.join(__dirname, "../assets/bike.png");
-        } 
-        else if (vehicleType === "auto") {
-          templatePath = path.join(__dirname, "../assets/bike.png");
-        } 
-        else if (vehicleType === "other") {
-          templatePath = path.join(__dirname, "../assets/template.png");
-        } 
-        else {
-          templatePath = path.join(__dirname, "../assets/template.png"); // car
-        }
-
     let x = 10;
     let y = 5;
-
-    const cardWidth = 180;
-    const cardHeight = 260;
 
     const gapX = 10;
     const gapY = 10;
 
-    for (let i = 0; i < qrs.length; i++) {
+    // =========================
+    // 🚗 CAR LAYOUT (UNCHANGED)
+    // =========================
+    if (vehicleType === "car") {
 
-  const qr = qrs[i];
+      const templatePath = path.join(__dirname, "../assets/template.png");
 
-   const publicUrl =`https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+      const cardWidth = 180;
+      const cardHeight = 260;
 
-  const qrImage = await QRCode.toDataURL(publicUrl);
-  const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
-  const qrBuffer = Buffer.from(base64Data, "base64");
+      for (let i = 0; i < qrs.length; i++) {
+        const qr = qrs[i];
 
-  // 👉 SAME QR 2 TIMES
-  for (let copy = 0; copy < 2; copy++) {
+        const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+        const qrImage = await QRCode.toDataURL(publicUrl);
+        const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
+        const qrBuffer = Buffer.from(base64Data, "base64");
 
+        for (let copy = 0; copy < 2; copy++) {
 
-    // TEMPLATE
-    doc.image(templatePath, x, y -40, {
-      width: cardWidth,
-    });
+          // TEMPLATE (same as before)
+          doc.image(templatePath, x, y - 40, {
+            width: cardWidth,
+          });
 
-    // QR
-    const qrSize = 125;
-    const qrX = x + (cardWidth - qrSize) / 2;
-    const qrY = y + 30;
+          // QR (same as before)
+          const qrSize = 125;
+          const qrX = x + (cardWidth - qrSize) / 2;
+          const qrY = y + 30;
 
-    doc.image(qrBuffer, qrX, qrY, {
-      width: qrSize,
-    });
+          doc.image(qrBuffer, qrX, qrY, {
+            width: qrSize,
+          });
 
-    // 👉 NEXT POSITION
-    x += cardWidth + gapX;
+          // POSITION
+          x += cardWidth + gapX;
 
-    // 👉 2 per row
-    if ((copy + 1) % 2 === 0) {
-      x = 10;
-      y += cardHeight + gapY;
+          if ((copy + 1) % 2 === 0) {
+            x = 10;
+            y += cardHeight + gapY;
+          }
+
+          if (y + cardHeight > 842) {
+            doc.addPage();
+            x = 10;
+            y = 5;
+          }
+        }
+      }
     }
 
-    // 👉 PAGE BREAK
-    if (y + cardHeight > 842) {
-      doc.addPage();
-      x = 10;
-      y = 5;
+    // =========================
+    // 🏍 BIKE / SCOOTY LAYOUT (SEPARATE)
+    // =========================
+    else {
+
+      const templatePath = path.join(__dirname, "../assets/bike.png");
+
+      const cardWidth = 170;   // 👈 yaha change karna
+      const cardHeight = 240;  // 👈 yaha change karna
+
+      const qrSize = 110;      // 👈 yaha change karna
+      const qrOffsetY = 45;    // 👈 yaha change karna
+      const templateOffsetY = 0; // 👈 yaha change karna
+
+      for (let i = 0; i < qrs.length; i++) {
+        const qr = qrs[i];
+
+        const publicUrl = `https://parkingqr-backend.onrender.com/scan/${qr.qrId}`;
+        const qrImage = await QRCode.toDataURL(publicUrl);
+        const base64Data = qrImage.replace(/^data:image\/png;base64,/, "");
+        const qrBuffer = Buffer.from(base64Data, "base64");
+
+        for (let copy = 0; copy < 2; copy++) {
+
+          // TEMPLATE (bike only)
+          doc.image(templatePath, x, y + templateOffsetY, {
+            width: cardWidth,
+          });
+
+          // QR (bike only)
+          const qrX = x + (cardWidth - qrSize) / 2;
+          const qrY = y + qrOffsetY;
+
+          doc.image(qrBuffer, qrX, qrY, {
+            width: qrSize,
+          });
+
+          // POSITION
+          x += cardWidth + gapX;
+
+          if ((copy + 1) % 2 === 0) {
+            x = 10;
+            y += cardHeight + gapY;
+          }
+
+          if (y + cardHeight > 842) {
+            doc.addPage();
+            x = 10;
+            y = 5;
+          }
+        }
+      }
     }
-  }
-}
 
     doc.end();
 
   } catch (error) {
     console.log(error);
     if (!res.headersSent) {
-  res.status(500).json({ message: "Error" });
-}
+      res.status(500).json({ message: "Error" });
+    }
   }
 });
-
 
 // GET BUSINESS LEADS
 router.get("/business-leads", async (req, res) => {
