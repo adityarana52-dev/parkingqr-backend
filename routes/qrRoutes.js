@@ -1138,7 +1138,7 @@ router.get("/download-order/:orderId", async (req, res) => {
 router.post("/add-service", protectShowroom, async (req, res) => {
   try {
 
-    const { qrId, amount, serviceDate, nextServiceDate } = req.body;
+    const { qrId, amount, serviceDate, nextServiceDate, isOldVehicle, manualServiceType  } = req.body;
 
     if (!qrId) {
       return res.status(400).json({
@@ -1158,14 +1158,22 @@ router.post("/add-service", protectShowroom, async (req, res) => {
     // 🔥 AUTO SERVICE COUNT
     const totalServices = await ServiceHistory.countDocuments({ qrId });
 
-    let autoServiceType = "";
+      let serviceType = "";
+      let serviceNumber = null;
 
-    if (totalServices === 0) autoServiceType = "first_service";
-    else if (totalServices === 1) autoServiceType = "second_service";
-    else if (totalServices === 2) autoServiceType = "third_service";
-    else autoServiceType = "regular_service";
+      if (isOldVehicle) {
+        // 🟡 OLD VEHICLE
+        serviceType = manualServiceType; // paid / free / checkup
+        serviceNumber = null;
+      } else {
+        // 🟢 NEW VEHICLE
+        if (totalServices === 0) serviceType = "first_service";
+        else if (totalServices === 1) serviceType = "second_service";
+        else if (totalServices === 2) serviceType = "third_service";
+        else serviceType = "regular_service";
 
-    const serviceNumber = totalServices + 1;
+        serviceNumber = totalServices + 1;
+      }
 
     // 🔥 CREATE SERVICE
     const service = await ServiceHistory.create({
@@ -1173,7 +1181,9 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       qrId: qr.qrId,
       user: qr.assignedTo,
       showroom: req.showroomData?._id || null, // 👈 SAFE
-      serviceType: autoServiceType,
+       serviceType,        // 👈 dynamic
+       serviceNumber,      // 👈 null for old vehicle  
+      serviceType,
       serviceNumber,
       amount,
       serviceDate: serviceDate || new Date(),

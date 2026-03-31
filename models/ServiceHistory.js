@@ -50,8 +50,9 @@ const serviceHistorySchema = new mongoose.Schema(
         default: null
 },
 serviceNumber: {
-  type: Number
-},
+  type: Number,
+  default: null
+}
 
   },
   { timestamps: true }
