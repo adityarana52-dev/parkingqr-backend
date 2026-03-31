@@ -48,6 +48,7 @@ router.get("/details/:qrId", async (req,res)=>{
 
         qrId:qr.qrId,
         qrStatus: qr.qrStatus, // 👈 ADD THIS LINE
+        vehicleNumber: qr.vehicleNumber, // 👈 ADD THIS
         sourceType:qr.sourceType,
 
         showroom: qr.showroom
