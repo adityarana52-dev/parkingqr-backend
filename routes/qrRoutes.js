@@ -1140,6 +1140,22 @@ router.post("/add-service", protectShowroom, async (req, res) => {
 
     const { qrId, serviceType, amount, serviceDate } = req.body;
 
+    // 🔥 AUTO SERVICE COUNT
+      const totalServices = await ServiceHistory.countDocuments({
+        qrId
+      });
+
+      // 🔥 AUTO SERVICE TYPE
+      let autoServiceType = "";
+
+      if (totalServices === 0) autoServiceType = "first_service";
+      else if (totalServices === 1) autoServiceType = "second_service";
+      else if (totalServices === 2) autoServiceType = "third_service";
+      else autoServiceType = "regular_service";
+
+      // 🔥 SERVICE NUMBER
+      const serviceNumber = totalServices + 1;
+
     if (!qrId || !serviceType) {
       return res.status(400).json({
         message: "QR ID and service type required"
@@ -1161,7 +1177,8 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       qrId: qr.qrId,
       user: qr.assignedTo,
       showroom: req.showroom._id,
-      serviceType,
+      serviceType: autoServiceType,
+      serviceNumber,
       amount,
       serviceDate: serviceDate || new Date()
     });
