@@ -1156,7 +1156,7 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       // 🔥 SERVICE NUMBER
       const serviceNumber = totalServices + 1;
 
-    if (!qrId || !serviceType) {
+    if (!qrId) {
       return res.status(400).json({
         message: "QR ID and service type required"
       });
