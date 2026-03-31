@@ -1245,17 +1245,25 @@ router.get("/service-history/:qrId", async (req, res) => {
 router.get("/service-history-count", protect, async (req, res) => {
   try {
 
-    const qr = await QrCode.findOne({ assignedTo: req.user._id });
+    // 🔥 user ke saare QR lo
+    const qrs = await QrCode.find({ assignedTo: req.user._id });
 
-    if (!qr) return res.json({ count: 0 });
+    if (!qrs.length) {
+      return res.json({ count: 0 });
+    }
 
+    // 🔥 sab QR IDs nikalo
+    const qrIds = qrs.map(q => q.qrId);
+
+    // 🔥 sabka total count
     const count = await ServiceHistory.countDocuments({
-      qrId: qr.qrId
+      qrId: { $in: qrIds }
     });
 
     res.json({ count });
 
   } catch (error) {
+    console.log("Service count error", error);
     res.status(500).json({ message: "Server error" });
   }
 });
