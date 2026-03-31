@@ -1180,6 +1180,21 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       nextServiceDate: nextServiceDate || null
     });
 
+    // 👇 add below service create
+      const user = await User.findById(qr.assignedTo);
+
+      if (user?.expoPushToken) {
+        await sendPushNotification(
+          user.expoPushToken,
+          "🚗 Service Updated",
+          `Service #${service.serviceNumber} added`,
+          {
+            type: "SERVICE_UPDATE",
+            qrId: qr.qrId
+          }
+        );
+      }
+
     // 🔥 UPDATE QR
     qr.lastServiceDate = service.serviceDate;
 
@@ -1223,6 +1238,25 @@ router.get("/service-history/:qrId", async (req, res) => {
     res.status(500).json({
       message: "Server error"
     });
+  }
+});
+
+
+router.get("/service-history-count", protectUser, async (req, res) => {
+  try {
+
+    const qr = await QrCode.findOne({ assignedTo: req.user._id });
+
+    if (!qr) return res.json({ count: 0 });
+
+    const count = await ServiceHistory.countDocuments({
+      qrId: qr.qrId
+    });
+
+    res.json({ count });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
   }
 });
 
