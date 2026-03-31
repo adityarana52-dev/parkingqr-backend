@@ -1242,7 +1242,7 @@ router.get("/service-history/:qrId", async (req, res) => {
 });
 
 
-router.get("/service-history-count", protectUser, async (req, res) => {
+router.get("/service-history-count", protect, async (req, res) => {
   try {
 
     const qr = await QrCode.findOne({ assignedTo: req.user._id });
