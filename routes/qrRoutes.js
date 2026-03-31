@@ -1138,7 +1138,7 @@ router.get("/download-order/:orderId", async (req, res) => {
 router.post("/add-service", protectShowroom, async (req, res) => {
   try {
 
-    const { qrId, serviceType, amount, serviceDate } = req.body;
+    const { qrId, serviceType, amount, serviceDate, nextServiceDate} = req.body;
 
     // 🔥 AUTO SERVICE COUNT
       const totalServices = await ServiceHistory.countDocuments({
@@ -1158,7 +1158,7 @@ router.post("/add-service", protectShowroom, async (req, res) => {
 
     if (!qrId) {
       return res.status(400).json({
-        message: "QR ID and service type required"
+        message: "QR ID required"
       });
     }
 
@@ -1180,16 +1180,20 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       serviceType: autoServiceType,
       serviceNumber,
       amount,
-      serviceDate: serviceDate || new Date()
+      serviceDate: serviceDate || new Date(),
+      nextServiceDate // 👈 ADD
     });
 
     // 🔥 update last + next service
     qr.lastServiceDate = service.serviceDate;
 
-    const next = new Date(service.serviceDate);
-    next.setMonth(next.getMonth() + 6);
-
-    qr.nextServiceDate = next;
+        if (nextServiceDate) {
+        qr.nextServiceDate = new Date(nextServiceDate);
+      } else {
+        const next = new Date(service.serviceDate);
+        next.setMonth(next.getMonth() + 6);
+        qr.nextServiceDate = next;
+      }
 
     await qr.save();
 
@@ -1213,6 +1217,7 @@ router.get("/service-history/:qrId", async (req, res) => {
     const { qrId } = req.params;
 
     const history = await ServiceHistory.find({ qrId })
+      .populate("showroom", "name")
       .sort({ createdAt: -1 });
 
     res.json(history);

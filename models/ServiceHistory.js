@@ -43,7 +43,15 @@ const serviceHistorySchema = new mongoose.Schema(
     serviceDate: {
       type: Date,
       default: Date.now
-    }
+    }, 
+
+    nextServiceDate: {
+        type: Date,
+        default: null
+},
+serviceNumber: {
+  type: Number
+},
 
   },
   { timestamps: true }
