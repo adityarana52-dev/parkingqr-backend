@@ -26,11 +26,16 @@ const serviceHistorySchema = new mongoose.Schema(
     serviceType: {
       type: String,
       enum: [
+        // 🟢 new vehicle
         "first_service",
         "second_service",
         "third_service",
-        "regular_checkup",
-        "regular_service"
+        "regular_service",
+
+        // 🟡 old vehicle
+        "paid",
+        "free",
+        "checkup"
       ],
       required: true
     },
