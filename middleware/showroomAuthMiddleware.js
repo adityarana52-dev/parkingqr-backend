@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const Showroom = require("../models/Showroom");
 
-const protectShowroom = (req, res, next) => {
+const protectShowroom = async (req, res, next) => {
   try {
 
     const authHeader = req.headers.authorization;
@@ -22,6 +23,10 @@ const protectShowroom = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.showroom = decoded;
+
+     // 🔥 NEW (SAFE ADDITION)
+    const showroom = await Showroom.findById(decoded.id);
+    req.showroomData = showroom;
 
     next();
 

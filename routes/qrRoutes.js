@@ -1138,23 +1138,7 @@ router.get("/download-order/:orderId", async (req, res) => {
 router.post("/add-service", protectShowroom, async (req, res) => {
   try {
 
-    const { qrId, serviceType, amount, serviceDate, nextServiceDate} = req.body;
-
-    // 🔥 AUTO SERVICE COUNT
-      const totalServices = await ServiceHistory.countDocuments({
-        qrId
-      });
-
-      // 🔥 AUTO SERVICE TYPE
-      let autoServiceType = "";
-
-      if (totalServices === 0) autoServiceType = "first_service";
-      else if (totalServices === 1) autoServiceType = "second_service";
-      else if (totalServices === 2) autoServiceType = "third_service";
-      else autoServiceType = "regular_service";
-
-      // 🔥 SERVICE NUMBER
-      const serviceNumber = totalServices + 1;
+    const { qrId, amount, serviceDate, nextServiceDate } = req.body;
 
     if (!qrId) {
       return res.status(400).json({
@@ -1162,7 +1146,7 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       });
     }
 
-    // find QR
+    // 🔍 find QR
     const qr = await QrCode.findOne({ qrId });
 
     if (!qr || qr.qrStatus !== "activated") {
@@ -1171,29 +1155,41 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       });
     }
 
-    // create history entry
+    // 🔥 AUTO SERVICE COUNT
+    const totalServices = await ServiceHistory.countDocuments({ qrId });
+
+    let autoServiceType = "";
+
+    if (totalServices === 0) autoServiceType = "first_service";
+    else if (totalServices === 1) autoServiceType = "second_service";
+    else if (totalServices === 2) autoServiceType = "third_service";
+    else autoServiceType = "regular_service";
+
+    const serviceNumber = totalServices + 1;
+
+    // 🔥 CREATE SERVICE
     const service = await ServiceHistory.create({
       qr: qr._id,
       qrId: qr.qrId,
       user: qr.assignedTo,
-      showroom: req.showroom._id,
+      showroom: req.showroomData?._id || null, // 👈 SAFE
       serviceType: autoServiceType,
       serviceNumber,
       amount,
       serviceDate: serviceDate || new Date(),
-      nextServiceDate // 👈 ADD
+      nextServiceDate: nextServiceDate || null
     });
 
-    // 🔥 update last + next service
+    // 🔥 UPDATE QR
     qr.lastServiceDate = service.serviceDate;
 
-        if (nextServiceDate) {
-        qr.nextServiceDate = new Date(nextServiceDate);
-      } else {
-        const next = new Date(service.serviceDate);
-        next.setMonth(next.getMonth() + 6);
-        qr.nextServiceDate = next;
-      }
+    if (nextServiceDate) {
+      qr.nextServiceDate = new Date(nextServiceDate);
+    } else {
+      const next = new Date(service.serviceDate);
+      next.setMonth(next.getMonth() + 6);
+      qr.nextServiceDate = next;
+    }
 
     await qr.save();
 
@@ -1217,7 +1213,7 @@ router.get("/service-history/:qrId", async (req, res) => {
     const { qrId } = req.params;
 
     const history = await ServiceHistory.find({ qrId })
-      .populate("showroom", "name")
+      .populate("showroom", "name") // 👈 IMPORTANT
       .sort({ createdAt: -1 });
 
     res.json(history);
