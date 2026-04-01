@@ -14,7 +14,6 @@ const ShowroomNotification = require("../models/ShowroomNotification");
 const OfferLog = require("../models/OfferLog");
 const User = require("../models/User");
 
-
 const ReminderLog = require("../models/ReminderLog");
 
 // ✅ Create Showroom
@@ -168,7 +167,6 @@ router.get("/sales-analytics/:showroomId", async (req, res) => {
 });
 
 // ✅ Showroom Dashboard
-// ✅ Showroom Dashboard (MONTHLY BASED)
 router.get("/dashboard", protectShowroom, async (req, res) => {
   try {
 
@@ -182,91 +180,32 @@ router.get("/dashboard", protectShowroom, async (req, res) => {
       });
     }
 
-    // 🔥 current month start
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
-    // 🔥 current month activated QR
-    const monthlyQrs = await QrCode.find({
-      showroom: showroomId,
-      qrStatus: "activated",
-      createdAt: { $gte: startOfMonth }
-    });
-
-    // 🔥 showroom monthly earnings calculate
-    let monthlyEarnings = 0;
-
-    monthlyQrs.forEach((qr) => {
-
-      let price = 0;
-
-      if (["car", "auto", "other"].includes(qr.vehicleType)) {
-        price = 399;
-      } else if (["bike", "scooty"].includes(qr.vehicleType)) {
-        price = 299;
-      }
-
-      if (showroom.commissionType === "percentage") {
-        monthlyEarnings += (showroom.commissionValue / 100) * price;
-      } else {
-        monthlyEarnings += showroom.commissionValue;
-      }
-
-    });
-
-    // 🔥 Salesperson data
-    const salesPersons = await SalesPerson.find({
-      showroom: showroomId,
-      isActive: true
-    });
-
-    const salesData = [];
-
-    for (let sp of salesPersons) {
-
-      const spQrs = monthlyQrs.filter(
-        qr => qr.salesPerson?.toString() === sp._id.toString()
-      );
-
-      let earnings = 0;
-
-      spQrs.forEach((qr) => {
-
-        let price = 0;
-
-        if (["car", "auto", "other"].includes(qr.vehicleType)) {
-          price = 399;
-        } else if (["bike", "scooty"].includes(qr.vehicleType)) {
-          price = 299;
-        }
-
-        if (sp.commissionType === "percentage") {
-          earnings += (sp.commissionValue / 100) * price;
-        } else {
-          earnings += sp.commissionValue;
-        }
-
-      });
-
-      salesData.push({
-        name: sp.name,
-        totalActivations: spQrs.length,
-        totalEarnings: earnings
-      });
-
-    }
-
-    // 🔥 Remaining stock
+    // Remaining stock
     const remainingStock =
       showroom.totalQRAllotted - showroom.totalQRActivated;
 
-    // 🔥 FINAL RESPONSE
+    // SalesPerson stats
+    const salesPersons = await SalesPerson.find({
+      showroom: showroomId,
+      isActive: true
+    }).select("name totalActivations totalEarnings");
+
     res.json({
-      totalEarnings: monthlyEarnings,
-      salesPersons: salesData,
-      totalQRActivated: showroom.totalQRActivated,
-      totalQRAllotted: showroom.totalQRAllotted,
-      remainingStock, 
-      totalQRActivated
+
+      showroomName: showroom.name,
+      showroomCode: showroom.showroomCode,
+      city: showroom.city,
+
+      isActive: showroom.isActive,
+
+      totalAllotted: showroom.totalQRAllotted,
+      totalActivated: showroom.totalQRActivated,
+      remainingStock,
+
+      totalEarnings: showroom.totalEarnings,
+
+      salesPersons
+
     });
 
   } catch (error) {
