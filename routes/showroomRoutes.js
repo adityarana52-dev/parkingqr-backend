@@ -183,9 +183,7 @@ router.get("/dashboard", protectShowroom, async (req, res) => {
     }
 
     // 🔥 current month start
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
     // 🔥 current month activated QR
     const monthlyQrs = await QrCode.find({
@@ -267,7 +265,8 @@ router.get("/dashboard", protectShowroom, async (req, res) => {
       salesPersons: salesData,
       totalQRActivated: showroom.totalQRActivated,
       totalQRAllotted: showroom.totalQRAllotted,
-      remainingStock
+      remainingStock, 
+      totalQRActivated
     });
 
   } catch (error) {
