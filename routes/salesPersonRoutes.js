@@ -3,6 +3,12 @@ const router = express.Router();
 const SalesPerson = require("../models/SalesPerson");
 const Showroom = require("../models/Showroom");
 const protectShowroom = require("../middleware/showroomAuthMiddleware");
+const PayoutDetails = require("../models/PayoutDetails");
+const {
+  getPayoutDetailsForEntity,
+  getPayoutSummary,
+  serializePayoutDetails,
+} = require("../utils/withdrawals");
 
 
 // ✅ Create Sales Person
@@ -71,7 +77,22 @@ router.get("/manage-team", protectShowroom, async (req, res) => {
       showroom: req.showroom.id
     }).select("name mobile isActive totalActivations totalEarnings");
 
-    res.json(salesPersons);
+    const payoutDetailsList = await PayoutDetails.find({
+      entityType: "salesperson",
+      showroom: req.showroom.id,
+      isActive: true,
+    }).select("entityId mode accountHolderName upiId accountNumber ifsc bankName isActive");
+
+    const payoutMap = new Map(
+      payoutDetailsList.map((details) => [details.entityId.toString(), details])
+    );
+
+    const response = salesPersons.map((salesPerson) => ({
+      ...salesPerson.toObject(),
+      payoutSummary: getPayoutSummary(payoutMap.get(salesPerson._id.toString()) || null),
+    }));
+
+    res.json(response);
 
   } catch (error) {
 
@@ -83,6 +104,94 @@ router.get("/manage-team", protectShowroom, async (req, res) => {
 
   }
 
+});
+
+router.get("/payout-details/:id", protectShowroom, async (req, res) => {
+  try {
+    const salesPerson = await SalesPerson.findOne({
+      _id: req.params.id,
+      showroom: req.showroom.id,
+    }).select("_id");
+
+    if (!salesPerson) {
+      return res.status(404).json({ message: "Salesperson not found" });
+    }
+
+    const payoutDetails = await getPayoutDetailsForEntity("salesperson", salesPerson._id);
+
+    res.json({
+      payoutDetails: serializePayoutDetails(payoutDetails),
+      payoutSummary: getPayoutSummary(payoutDetails),
+    });
+  } catch (error) {
+    console.log("Salesperson payout fetch error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/payout-details/:id", protectShowroom, async (req, res) => {
+  try {
+    const salesPerson = await SalesPerson.findOne({
+      _id: req.params.id,
+      showroom: req.showroom.id,
+    }).select("_id");
+
+    if (!salesPerson) {
+      return res.status(404).json({ message: "Salesperson not found" });
+    }
+
+    const {
+      mode,
+      accountHolderName,
+      upiId = "",
+      accountNumber = "",
+      ifsc = "",
+      bankName = "",
+    } = req.body;
+
+    if (!mode || !accountHolderName) {
+      return res.status(400).json({ message: "Mode and account holder name required" });
+    }
+
+    if (mode === "upi" && !upiId) {
+      return res.status(400).json({ message: "UPI ID required" });
+    }
+
+    if (mode === "bank" && (!accountNumber || !ifsc || !bankName)) {
+      return res.status(400).json({ message: "Bank account, IFSC and bank name required" });
+    }
+
+    const payoutDetails = await PayoutDetails.findOneAndUpdate(
+      {
+        entityType: "salesperson",
+        entityId: salesPerson._id,
+      },
+      {
+        showroom: req.showroom.id,
+        mode,
+        accountHolderName: accountHolderName.trim(),
+        upiId: mode === "upi" ? upiId.trim() : null,
+        accountNumber: mode === "bank" ? accountNumber.trim() : null,
+        ifsc: mode === "bank" ? ifsc.trim().toUpperCase() : null,
+        bankName: mode === "bank" ? bankName.trim() : null,
+        isActive: true,
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    res.json({
+      message: "Payout details saved",
+      payoutDetails: serializePayoutDetails(payoutDetails),
+      payoutSummary: getPayoutSummary(payoutDetails),
+    });
+  } catch (error) {
+    console.log("Salesperson payout save error", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 router.patch("/deactivate/:id", protectShowroom, async (req, res) => {

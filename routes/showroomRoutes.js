@@ -20,6 +20,15 @@ const {
   formatMonthLabel,
   getMonthKey,
 } = require("../utils/commissionLedger");
+const PayoutDetails = require("../models/PayoutDetails");
+const {
+  createOrUpdateWithdrawalRequest,
+  getPayoutDetailsForEntity,
+  getPayoutSummary,
+  getWithdrawalMapForShowroom,
+  isClosedMonth,
+  serializePayoutDetails,
+} = require("../utils/withdrawals");
 
 async function getMonthlySalesSummaries(showroomId, monthKey) {
   const salesRows = await CommissionLedger.aggregate([
@@ -202,6 +211,132 @@ router.get("/sales-analytics/:showroomId", async (req, res) => {
 });
 
 // ✅ Showroom Dashboard
+router.get("/payout-details", protectShowroom, async (req, res) => {
+  try {
+    const payoutDetails = await getPayoutDetailsForEntity("showroom", req.showroom.id);
+
+    res.json({
+      payoutDetails: serializePayoutDetails(payoutDetails),
+      payoutSummary: getPayoutSummary(payoutDetails),
+    });
+  } catch (error) {
+    console.log("Showroom payout details error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/payout-details", protectShowroom, async (req, res) => {
+  try {
+    const {
+      mode,
+      accountHolderName,
+      upiId = "",
+      accountNumber = "",
+      ifsc = "",
+      bankName = "",
+    } = req.body;
+
+    if (!mode || !accountHolderName) {
+      return res.status(400).json({ message: "Mode and account holder name required" });
+    }
+
+    if (mode === "upi" && !upiId) {
+      return res.status(400).json({ message: "UPI ID required" });
+    }
+
+    if (mode === "bank" && (!accountNumber || !ifsc || !bankName)) {
+      return res.status(400).json({ message: "Bank account, IFSC and bank name required" });
+    }
+
+    const payoutDetails = await PayoutDetails.findOneAndUpdate(
+      {
+        entityType: "showroom",
+        entityId: req.showroom.id,
+      },
+      {
+        showroom: req.showroom.id,
+        mode,
+        accountHolderName: accountHolderName.trim(),
+        upiId: mode === "upi" ? upiId.trim() : null,
+        accountNumber: mode === "bank" ? accountNumber.trim() : null,
+        ifsc: mode === "bank" ? ifsc.trim().toUpperCase() : null,
+        bankName: mode === "bank" ? bankName.trim() : null,
+        isActive: true,
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    res.json({
+      message: "Payout details saved",
+      payoutDetails: serializePayoutDetails(payoutDetails),
+      payoutSummary: getPayoutSummary(payoutDetails),
+    });
+  } catch (error) {
+    console.log("Save showroom payout details error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/withdrawals/request", protectShowroom, async (req, res) => {
+  try {
+    const { entityType, salesPersonId = null, monthKey, requestNote = "" } = req.body;
+    const showroomId = req.showroom.id;
+
+    if (!entityType || !monthKey) {
+      return res.status(400).json({ message: "Entity type and month required" });
+    }
+
+    if (!isClosedMonth(monthKey)) {
+      return res.status(400).json({ message: "Current month cannot be withdrawn" });
+    }
+
+    let entityId = showroomId;
+    let resolvedSalesPersonId = null;
+
+    if (entityType === "salesperson") {
+      if (!salesPersonId) {
+        return res.status(400).json({ message: "Salesperson required" });
+      }
+
+      const salesPerson = await SalesPerson.findOne({
+        _id: salesPersonId,
+        showroom: showroomId,
+      }).select("_id");
+
+      if (!salesPerson) {
+        return res.status(404).json({ message: "Salesperson not found" });
+      }
+
+      entityId = salesPerson._id;
+      resolvedSalesPersonId = salesPerson._id;
+    } else if (entityType !== "showroom") {
+      return res.status(400).json({ message: "Invalid entity type" });
+    }
+
+    const withdrawal = await createOrUpdateWithdrawalRequest({
+      showroomId,
+      entityType,
+      entityId,
+      salesPersonId: resolvedSalesPersonId,
+      monthKey,
+      requestNote,
+    });
+
+    res.json({
+      message: "Withdrawal request submitted",
+      withdrawalId: withdrawal._id,
+      status: withdrawal.status,
+    });
+  } catch (error) {
+    console.log("Create withdrawal request error", error);
+    res.status(400).json({ message: error.message || "Unable to request withdrawal" });
+  }
+});
+
 router.get("/dashboard", protectShowroom, async (req, res) => {
   try {
 
@@ -305,8 +440,21 @@ router.get("/dashboard", protectShowroom, async (req, res) => {
 router.get("/commission-history", protectShowroom, async (req, res) => {
   try {
     const showroomId = req.showroom.id;
+    const currentMonthKey = getMonthKey(new Date());
 
     await ensureCommissionEntriesForShowroom(showroomId);
+
+    const showroomPayoutDetails = await getPayoutDetailsForEntity("showroom", showroomId);
+    const withdrawalMap = await getWithdrawalMapForShowroom(showroomId);
+    const salesPayoutDetails = await PayoutDetails.find({
+      entityType: "salesperson",
+      showroom: showroomId,
+      isActive: true,
+    }).select("entityId mode accountHolderName upiId accountNumber ifsc bankName isActive");
+
+    const salesPayoutMap = new Map(
+      salesPayoutDetails.map((details) => [details.entityId.toString(), details])
+    );
 
     const monthlySummaries = await CommissionLedger.aggregate([
       {
@@ -371,11 +519,16 @@ router.get("/commission-history", protectShowroom, async (req, res) => {
     const monthMap = new Map();
 
     for (const month of monthlySummaries) {
+      const showroomWithdrawalKey = `showroom:${showroomId}:${month._id}`;
+
       monthMap.set(month._id, {
         monthKey: month._id,
         monthLabel: formatMonthLabel(month._id),
         showroomEarnings: month.showroomEarnings || 0,
         showroomActivations: month.showroomActivations || 0,
+        canRequestShowroomWithdrawal: isClosedMonth(month._id),
+        showroomPayoutSummary: getPayoutSummary(showroomPayoutDetails),
+        showroomWithdrawal: withdrawalMap.get(showroomWithdrawalKey) || null,
         salesPersons: [],
       });
     }
@@ -391,11 +544,20 @@ router.get("/commission-history", protectShowroom, async (req, res) => {
         name: row.salesPersonData?.name || "Salesperson",
         totalActivations: row.totalActivations || 0,
         totalEarnings: row.totalEarnings || 0,
+        canRequestWithdrawal: isClosedMonth(row._id.monthKey),
+        payoutSummary: getPayoutSummary(
+          salesPayoutMap.get(row._id.salesPerson.toString()) || null
+        ),
+        withdrawal:
+          withdrawalMap.get(
+            `salesperson:${row._id.salesPerson.toString()}:${row._id.monthKey}`
+          ) || null,
       });
     }
 
     res.json({
-      currentMonthKey: getMonthKey(new Date()),
+      currentMonthKey,
+      showroomPayoutSummary: getPayoutSummary(showroomPayoutDetails),
       months: Array.from(monthMap.values()),
     });
 

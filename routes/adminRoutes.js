@@ -10,11 +10,9 @@ const PDFDocument = require("pdfkit");
 const QRCode = require("qrcode");
 const ShowroomLead = require("../models/ShowroomLead");
 const path = require("path");
-
-
-
 const StateCounter = require("../models/StateCounter");
 const bcrypt = require("bcryptjs");
+const CommissionWithdrawal = require("../models/CommissionWithdrawal");
 
 router.get("/qr-requests", async (req, res) => {
 
@@ -136,8 +134,11 @@ router.get("/dashboard", async (req, res) => {
 
   try {
 
-        const pendingRequests = await QrRequest.countDocuments({
+    const pendingRequests = await QrRequest.countDocuments({
     status: "pending"
+    });
+    const pendingWithdrawals = await CommissionWithdrawal.countDocuments({
+      status: "pending"
     });
 
     const SUBSCRIPTION_PRICE = 299;
@@ -207,6 +208,7 @@ router.get("/dashboard", async (req, res) => {
 
       netProfit,
       pendingRequests,
+      pendingWithdrawals,
 
       topShowrooms,
       topSalesPersons
@@ -223,6 +225,85 @@ router.get("/dashboard", async (req, res) => {
 
   }
 
+});
+
+router.get("/withdrawals", async (req, res) => {
+  try {
+    const withdrawals = await CommissionWithdrawal.find()
+      .populate("showroom", "name showroomCode")
+      .populate("salesPerson", "name")
+      .sort({ requestedAt: -1 });
+
+    const response = withdrawals.map((withdrawal) => ({
+      _id: withdrawal._id,
+      entityType: withdrawal.entityType,
+      monthKey: withdrawal.monthKey,
+      requestedAmount: withdrawal.requestedAmount,
+      totalActivations: withdrawal.totalActivations,
+      status: withdrawal.status,
+      requestNote: withdrawal.requestNote,
+      paymentNote: withdrawal.paymentNote,
+      transactionRef: withdrawal.transactionRef,
+      requestedAt: withdrawal.requestedAt,
+      paidAt: withdrawal.paidAt,
+      rejectedAt: withdrawal.rejectedAt,
+      payoutMode: withdrawal.payoutMode,
+      payoutDetailsSnapshot: withdrawal.payoutDetailsSnapshot,
+      showroom: withdrawal.showroom,
+      salesPerson: withdrawal.salesPerson,
+      title:
+        withdrawal.entityType === "showroom"
+          ? withdrawal.showroom?.name || "Showroom"
+          : withdrawal.salesPerson?.name || "Salesperson",
+      subtitle:
+        withdrawal.entityType === "showroom"
+          ? withdrawal.showroom?.showroomCode || ""
+          : withdrawal.showroom?.name || "",
+    }));
+
+    res.json(response);
+  } catch (error) {
+    console.log("Admin withdrawal fetch error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.patch("/withdrawals/:id", async (req, res) => {
+  try {
+    const { status, paymentNote = "", transactionRef = "" } = req.body;
+
+    if (!["paid", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const withdrawal = await CommissionWithdrawal.findById(req.params.id);
+
+    if (!withdrawal) {
+      return res.status(404).json({ message: "Withdrawal not found" });
+    }
+
+    withdrawal.status = status;
+    withdrawal.paymentNote = paymentNote;
+    withdrawal.transactionRef = transactionRef;
+
+    if (status === "paid") {
+      withdrawal.paidAt = new Date();
+      withdrawal.rejectedAt = null;
+    } else {
+      withdrawal.rejectedAt = new Date();
+      withdrawal.paidAt = null;
+    }
+
+    await withdrawal.save();
+
+    res.json({
+      message: `Withdrawal ${status}`,
+      status: withdrawal.status,
+    });
+  } catch (error) {
+    console.log("Admin withdrawal update error", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 
