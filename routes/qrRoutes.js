@@ -13,6 +13,11 @@ const SalesPerson = require("../models/SalesPerson");
 const QrOrder = require("../models/QrOrder");
 const ServiceHistory = require("../models/ServiceHistory");
 const protectShowroom = require("../middleware/showroomAuthMiddleware");
+const {
+  calculateCommission,
+  createCommissionEntry,
+  getSubscriptionAmount,
+} = require("../utils/commissionLedger");
 
 console.log("QR ROUTES LOADED");
 
@@ -294,6 +299,7 @@ router.post("/activate", protect, async (req, res) => {
 
           qr.isAssigned = true;
           qr.qrStatus = "activated";
+          qr.activatedAt = new Date();
 
           if (!qr.assignedTo) {
             qr.assignedTo = req.user._id;
@@ -348,28 +354,22 @@ router.post("/activate", protect, async (req, res) => {
     console.log("SALESPERSON:", salesPerson);
 
       // 🔥 Commission Calculation (Plan = ₹299)
-const subscriptionAmount = user.subscriptionPrice || 299;
+const subscriptionAmount = getSubscriptionAmount(user);
+let showroomCommissionData = null;
 
 // 🏢 Showroom Commission
 if (qr.showroom) {
-  
+  showroomCommissionData = await Showroom.findById(qr.showroom._id);
 
-  const showroomData = await Showroom.findById(qr.showroom._id);
+  if (showroomCommissionData) {
+    const showroomCommission = calculateCommission(
+      showroomCommissionData,
+      subscriptionAmount
+    );
 
-  if (showroomData) {
-
-    let showroomCommission = 0;
-
-    if (showroomData.commissionType === "fixed") {
-      showroomCommission = showroomData.commissionValue;
-    } else if (showroomData.commissionType === "percentage") {
-      showroomCommission = Math.round(
-        (subscriptionAmount * showroomData.commissionValue) / 100
-      );
-    }
-        console.log("SHOWROOM COMMISSION:", showroomCommission);
+    console.log("SHOWROOM COMMISSION:", showroomCommission);
     await Showroom.findByIdAndUpdate(
-      showroomData._id,
+      showroomCommissionData._id,
       { $inc: { totalEarnings: showroomCommission } }
     );
   }
@@ -384,21 +384,30 @@ if (salesPerson && salesPerson !== "null") {
 
   if (spData) {
 
-    let salesCommission = 0;
+    const salesCommission = calculateCommission(spData, subscriptionAmount);
 
-    if (spData.commissionType === "fixed") {
-      salesCommission = spData.commissionValue;
-    } else if (spData.commissionType === "percentage") {
-      salesCommission = Math.round(
-        (subscriptionAmount * spData.commissionValue) / 100
-      );
-    }
-      console.log("SALESPERSON COMMISSION:", salesCommission);
+    console.log("SALESPERSON COMMISSION:", salesCommission);
     await SalesPerson.findByIdAndUpdate(
       spData._id,
       { $inc: { totalEarnings: salesCommission } }
     );
+
+    await createCommissionEntry({
+      qr,
+      user,
+      showroomData: showroomCommissionData,
+      salesPersonData: spData,
+      activatedAt: qr.activatedAt,
+    });
   }
+} else if (showroomCommissionData) {
+  await createCommissionEntry({
+    qr,
+    user,
+    showroomData: showroomCommissionData,
+    salesPersonData: null,
+    activatedAt: qr.activatedAt,
+  });
 }
 
     res.json({

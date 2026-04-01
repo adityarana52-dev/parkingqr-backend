@@ -13,8 +13,43 @@ const sendPushNotification = require("../utils/sendPushNotification");
 const ShowroomNotification = require("../models/ShowroomNotification");
 const OfferLog = require("../models/OfferLog");
 const User = require("../models/User");
-
 const ReminderLog = require("../models/ReminderLog");
+const CommissionLedger = require("../models/CommissionLedger");
+const {
+  ensureCommissionEntriesForShowroom,
+  formatMonthLabel,
+  getMonthKey,
+} = require("../utils/commissionLedger");
+
+async function getMonthlySalesSummaries(showroomId, monthKey) {
+  const salesRows = await CommissionLedger.aggregate([
+    {
+      $match: {
+        showroom: new mongoose.Types.ObjectId(showroomId),
+        monthKey,
+      },
+    },
+    {
+      $group: {
+        _id: "$salesPerson",
+        totalActivations: { $sum: 1 },
+        totalEarnings: { $sum: "$salesCommission" },
+      },
+    },
+  ]);
+
+  return new Map(
+    salesRows
+      .filter((row) => row._id)
+      .map((row) => [
+        row._id.toString(),
+        {
+          totalActivations: row.totalActivations || 0,
+          totalEarnings: row.totalEarnings || 0,
+        },
+      ])
+  );
+}
 
 // ✅ Create Showroom
 // ✅ Create Showroom (State Wise Auto Code)
@@ -184,11 +219,55 @@ router.get("/dashboard", protectShowroom, async (req, res) => {
     const remainingStock =
       showroom.totalQRAllotted - showroom.totalQRActivated;
 
-    // SalesPerson stats
-    const salesPersons = await SalesPerson.find({
+    await ensureCommissionEntriesForShowroom(showroomId);
+
+    const currentMonthKey = getMonthKey(new Date());
+
+    const monthlySummary = await CommissionLedger.aggregate([
+      {
+        $match: {
+          showroom: new mongoose.Types.ObjectId(showroomId),
+          monthKey: currentMonthKey,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalEarnings: { $sum: "$showroomCommission" },
+          totalActivations: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const salesSummaryMap = await getMonthlySalesSummaries(showroomId, currentMonthKey);
+
+    const activeSalesPersons = await SalesPerson.find({
       showroom: showroomId,
       isActive: true
-    }).select("name totalActivations totalEarnings");
+    }).select("name");
+
+    const salesPersons = activeSalesPersons
+      .map((salesPerson) => {
+        const monthlyStats =
+          salesSummaryMap.get(salesPerson._id.toString()) || {
+            totalActivations: 0,
+            totalEarnings: 0,
+          };
+
+        return {
+          _id: salesPerson._id,
+          name: salesPerson.name,
+          totalActivations: monthlyStats.totalActivations,
+          totalEarnings: monthlyStats.totalEarnings,
+        };
+      })
+      .sort((a, b) => {
+        if (b.totalActivations !== a.totalActivations) {
+          return b.totalActivations - a.totalActivations;
+        }
+
+        return b.totalEarnings - a.totalEarnings;
+      });
 
     res.json({
 
@@ -202,7 +281,11 @@ router.get("/dashboard", protectShowroom, async (req, res) => {
       totalActivated: showroom.totalQRActivated,
       remainingStock,
 
-      totalEarnings: showroom.totalEarnings,
+      totalEarnings: monthlySummary[0]?.totalEarnings || 0,
+      lifetimeTotalEarnings: showroom.totalEarnings,
+      currentMonthKey,
+      currentMonthLabel: formatMonthLabel(currentMonthKey),
+      currentMonthActivations: monthlySummary[0]?.totalActivations || 0,
 
       salesPersons
 
@@ -216,6 +299,109 @@ router.get("/dashboard", protectShowroom, async (req, res) => {
       message: "Server error"
     });
 
+  }
+});
+
+router.get("/commission-history", protectShowroom, async (req, res) => {
+  try {
+    const showroomId = req.showroom.id;
+
+    await ensureCommissionEntriesForShowroom(showroomId);
+
+    const monthlySummaries = await CommissionLedger.aggregate([
+      {
+        $match: {
+          showroom: new mongoose.Types.ObjectId(showroomId),
+        },
+      },
+      {
+        $group: {
+          _id: "$monthKey",
+          activatedAt: { $min: "$activatedAt" },
+          showroomEarnings: { $sum: "$showroomCommission" },
+          showroomActivations: { $sum: 1 },
+        },
+      },
+      {
+        $sort: {
+          activatedAt: -1,
+        },
+      },
+    ]);
+
+    const salesBreakdown = await CommissionLedger.aggregate([
+      {
+        $match: {
+          showroom: new mongoose.Types.ObjectId(showroomId),
+          salesPerson: { $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            monthKey: "$monthKey",
+            salesPerson: "$salesPerson",
+          },
+          totalActivations: { $sum: 1 },
+          totalEarnings: { $sum: "$salesCommission" },
+        },
+      },
+      {
+        $lookup: {
+          from: SalesPerson.collection.name,
+          localField: "_id.salesPerson",
+          foreignField: "_id",
+          as: "salesPersonData",
+        },
+      },
+      {
+        $unwind: {
+          path: "$salesPersonData",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $sort: {
+          "_id.monthKey": -1,
+          totalEarnings: -1,
+        },
+      },
+    ]);
+
+    const monthMap = new Map();
+
+    for (const month of monthlySummaries) {
+      monthMap.set(month._id, {
+        monthKey: month._id,
+        monthLabel: formatMonthLabel(month._id),
+        showroomEarnings: month.showroomEarnings || 0,
+        showroomActivations: month.showroomActivations || 0,
+        salesPersons: [],
+      });
+    }
+
+    for (const row of salesBreakdown) {
+      const month = monthMap.get(row._id.monthKey);
+      if (!month) {
+        continue;
+      }
+
+      month.salesPersons.push({
+        _id: row._id.salesPerson,
+        name: row.salesPersonData?.name || "Salesperson",
+        totalActivations: row.totalActivations || 0,
+        totalEarnings: row.totalEarnings || 0,
+      });
+    }
+
+    res.json({
+      currentMonthKey: getMonthKey(new Date()),
+      months: Array.from(monthMap.values()),
+    });
+
+  } catch (error) {
+    console.log("Commission history error", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

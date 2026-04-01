@@ -48,6 +48,12 @@ const qrCodeSchema = new mongoose.Schema(
       default: null,
     },
 
+    activatedAt: {
+      type: Date,
+      default: null,
+      index: true
+    },
+
         insuranceStartDate: {
       type: Date,
       default: null
