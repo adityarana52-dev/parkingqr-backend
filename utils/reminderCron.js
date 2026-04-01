@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const QrCode = require("../models/QrCode");
 const sendPushNotification = require("./sendPushNotification");
+const ServiceHistory = require("../models/ServiceHistory");
 
 cron.schedule("0 9 * * *", async () => {
 
@@ -61,37 +62,38 @@ Please visit ${qr.showroom?.name || "nearest service center"} for renewal.`,
 
 
 // SERVICE REMINDERS
+// 🔥 SERVICE REMINDERS (FINAL)
+
 const serviceVehicles = await QrCode.find({
-nextServiceDate: { $ne: null }
+  nextServiceDate: { $ne: null }
 })
 .populate("assignedTo")
 .populate("showroom");
 
-for(const qr of serviceVehicles){
+for (const qr of serviceVehicles) {
 
-if(!qr.assignedTo?.expoPushToken) continue;
+  if (!qr.assignedTo?.expoPushToken) continue;
 
-const serviceDate = new Date(qr.nextServiceDate);
+  const serviceDate = new Date(qr.nextServiceDate);
 
-const daysLeft = getDaysDifference(serviceDate, today);
+  const daysLeft = getDaysDifference(serviceDate, today);
 
-if([30,7,3,1].includes(daysLeft)){
+  if ([30, 7, 3, 1].includes(daysLeft)) {
 
-await sendPushNotification(
+    await sendPushNotification(
+      qr.assignedTo.expoPushToken,
 
-qr.assignedTo.expoPushToken,
+      `${qr.showroom?.name || "Service Reminder"}`,
 
-`${qr.showroom?.name || "Service Reminder"}`,
+      `Vehicle ${qr.vehicleNumber} service is due in ${daysLeft} day(s).`,
 
-`Vehicle ${qr.vehicleNumber} service is due in ${daysLeft} day(s).
+      {
+        type: "SERVICE_REMINDER",
+        qrId: qr.qrId
+      }
+    );
 
-Visit ${qr.showroom?.name || "your service center"} to schedule service.`,
-
-{type:"service-reminder"}
-
-);
-
-}
+  }
 
 }
 
