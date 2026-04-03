@@ -12,6 +12,7 @@ const fs = require("fs");
 const SalesPerson = require("../models/SalesPerson");
 const QrOrder = require("../models/QrOrder");
 const ServiceHistory = require("../models/ServiceHistory");
+const ServiceNote = require("../models/ServiceNote");
 const protectShowroom = require("../middleware/showroomAuthMiddleware");
 const {
   calculateCommission,
@@ -1147,7 +1148,15 @@ router.get("/download-order/:orderId", async (req, res) => {
 router.post("/add-service", protectShowroom, async (req, res) => {
   try {
 
-    const { qrId, amount, serviceDate, nextServiceDate, isOldVehicle, manualServiceType  } = req.body;
+    const {
+      qrId,
+      amount,
+      serviceDate,
+      nextServiceDate,
+      isOldVehicle,
+      manualServiceType,
+      serviceNoteId,
+    } = req.body;
 
     if (!qrId) {
       return res.status(400).json({
@@ -1226,6 +1235,23 @@ router.post("/add-service", protectShowroom, async (req, res) => {
     }
 
     await qr.save();
+
+    if (serviceNoteId && req.showroomData?._id) {
+      const serviceNote = await ServiceNote.findOne({
+        _id: serviceNoteId,
+        qrId: qr.qrId,
+        selectedShowroom: req.showroomData._id,
+        status: { $in: ["submitted", "in_service"] },
+      });
+
+      if (serviceNote) {
+        serviceNote.status = "archived";
+        serviceNote.archivedAt = new Date();
+        serviceNote.linkedService = service._id;
+        serviceNote.resolutionSummary = `Closed with service entry ${service.serviceNumber || "manual"}.`;
+        await serviceNote.save();
+      }
+    }
 
     res.json({
       message: "Service added successfully",

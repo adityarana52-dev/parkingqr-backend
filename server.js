@@ -30,6 +30,7 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/showrooms", showroomRoutes);
 app.use("/api/qr", require("./routes/qrRoutes"));
 app.use("/api/vehicles", vehicleRoutes);
+app.use("/api/service-notes", require("./routes/serviceNoteRoutes"));
 app.use("/api/payment", require("./routes/payment"));
 
 app.use("/api/salesperson", require("./routes/salesPersonRoutes"));
