@@ -90,22 +90,49 @@ router.get("/showrooms/:qrId", protect, async (req, res) => {
       return res.status(404).json({ message: "Vehicle not found" });
     }
 
-    const showroomFilter = { isActive: true };
-    if (qr.vehicleType) {
-      showroomFilter.$or = [
-        { vehicleType: qr.vehicleType },
-        { vehicleType: null },
-        { vehicleType: { $exists: false } },
-      ];
-    }
+    const queryFilter = qr.vehicleType
+      ? {
+          $and: [
+            { $or: [{ isActive: true }, { isActive: { $exists: false } }] },
+            {
+              $or: [
+                { vehicleType: qr.vehicleType },
+                { vehicleType: null },
+                { vehicleType: { $exists: false } },
+              ],
+            },
+          ],
+        }
+      : { $or: [{ isActive: true }, { isActive: { $exists: false } }] };
 
-    const showrooms = await Showroom.find(showroomFilter)
+    const showrooms = await Showroom.find(queryFilter)
       .select("name showroomCode city vehicleType")
       .lean();
 
     const activatedShowroomId = qr.showroom?._id?.toString() || null;
+    const activatedShowroom = qr.showroom
+      ? {
+          _id: qr.showroom._id,
+          name: qr.showroom.name,
+          showroomCode: qr.showroom.showroomCode,
+          city: qr.showroom.city,
+          vehicleType: qr.showroom.vehicleType,
+          isActivatedShowroom: true,
+        }
+      : null;
 
-    const sortedShowrooms = showrooms
+    const mergedShowrooms = [...showrooms];
+
+    if (
+      activatedShowroom &&
+      !mergedShowrooms.some(
+        (showroom) => showroom._id.toString() === activatedShowroomId
+      )
+    ) {
+      mergedShowrooms.push(activatedShowroom);
+    }
+
+    const sortedShowrooms = mergedShowrooms
       .map((showroom) => ({
         ...showroom,
         isActivatedShowroom:
@@ -120,6 +147,7 @@ router.get("/showrooms/:qrId", protect, async (req, res) => {
 
     res.json({
       activatedShowroomId,
+      activatedShowroom,
       showrooms: sortedShowrooms,
     });
   } catch (error) {
