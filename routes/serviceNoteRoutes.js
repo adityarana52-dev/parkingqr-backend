@@ -81,14 +81,13 @@ router.get("/my/:qrId", protect, async (req, res) => {
 router.get("/showrooms/:qrId", protect, async (req, res) => {
   try {
     const { qrId } = req.params;
-    const qr = await findOwnedQr(qrId, req.user._id).populate(
-      "showroom",
-      "name showroomCode city vehicleType"
-    );
+    const qr = await findOwnedQr(qrId, req.user._id);
 
     if (!qr) {
       return res.status(404).json({ message: "Vehicle not found" });
     }
+
+    await qr.populate("showroom", "name showroomCode city vehicleType");
 
     const queryFilter = qr.vehicleType
       ? {
