@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
+const DEFAULT_ADMIN_MOBILE = "9827082531";
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -16,6 +17,24 @@ const generateToken = (user) => {
 
 exports.generateToken = generateToken;
 
+function normalizeMobile(mobile) {
+  return String(mobile || "").trim();
+}
+
+async function ensureUserRole(user) {
+  const adminMobile =
+    normalizeMobile(process.env.ADMIN_MOBILE) || DEFAULT_ADMIN_MOBILE;
+
+  if (normalizeMobile(user?.mobile) === adminMobile && user.role !== "admin") {
+    user.role = "admin";
+    await user.save();
+  }
+
+  return user;
+}
+
+exports.ensureUserRole = ensureUserRole;
+
 exports.loginUser = async (req, res) => {
   try {
     const { mobile } = req.body;
@@ -29,6 +48,8 @@ exports.loginUser = async (req, res) => {
     if (!user) {
       user = await User.create({ mobile });
     }
+
+    user = await ensureUserRole(user);
 
     res.json({
       _id: user._id,

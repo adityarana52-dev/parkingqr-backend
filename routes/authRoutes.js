@@ -4,7 +4,11 @@ const axios = require("axios");
 const crypto = require("crypto");
 const User = require("../models/User"); // ensure correct path
 const OtpSession = require("../models/OtpSession");
-const { loginUser, generateToken } = require("../controllers/authController");
+const {
+  loginUser,
+  generateToken,
+  ensureUserRole,
+} = require("../controllers/authController");
 
 const OTP_LENGTH = 6;
 const OTP_TTL_MS = 5 * 60 * 1000;
@@ -188,6 +192,8 @@ router.post("/verify-otp", async (req, res) => {
     if (!user) {
       user = await User.create({ mobile });
     }
+
+    user = await ensureUserRole(user);
 
     const token = generateToken(user);
     await otpSession.deleteOne();
