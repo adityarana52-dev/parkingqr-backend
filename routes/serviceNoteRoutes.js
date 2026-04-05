@@ -5,6 +5,7 @@ const protectShowroom = require("../middleware/showroomAuthMiddleware");
 const QrCode = require("../models/QrCode");
 const Showroom = require("../models/Showroom");
 const ServiceNote = require("../models/ServiceNote");
+const ShowroomCustomerRequest = require("../models/ShowroomCustomerRequest");
 
 function normalizeIssues(issues = []) {
   if (!Array.isArray(issues)) {
@@ -39,6 +40,82 @@ async function findOwnedQr(qrId, userId) {
 
 function getShowroomSortKey(showroom) {
   return String(showroom?.showroomCode || showroom?.name || "").toUpperCase();
+}
+
+function normalizeRequestType(requestType) {
+  if (requestType === "service" || requestType === "service_booking") {
+    return "service_booking";
+  }
+
+  if (requestType === "insurance" || requestType === "insurance_quote") {
+    return "insurance_quote";
+  }
+
+  return null;
+}
+
+function formatRequestDate(date) {
+  if (!date) {
+    return null;
+  }
+
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function dedupeIssueObjects(issueObjects = []) {
+  const seen = new Set();
+
+  return issueObjects.filter((item) => {
+    const text = String(item?.text || "").trim();
+    const key = text.toLowerCase();
+
+    if (!text || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildCustomerRequestIssues({
+  requestType,
+  preferredServiceDate,
+  notesSnapshot,
+}) {
+  const baseIssues =
+    requestType === "service_booking" ? normalizeIssues(notesSnapshot) : [];
+
+  const autoIssues =
+    requestType === "service_booking"
+      ? [
+          { text: "Periodic service booking requested." },
+          ...(formatRequestDate(preferredServiceDate)
+            ? [
+                {
+                  text: `Preferred appointment date: ${formatRequestDate(
+                    preferredServiceDate
+                  )}.`,
+                },
+              ]
+            : []),
+        ]
+      : [
+          {
+            text: "Insurance renewal quote requested. Please share the best available quote.",
+          },
+        ];
+
+  return dedupeIssueObjects([...baseIssues, ...autoIssues]).slice(0, 12);
 }
 
 router.get("/my/:qrId", protect, async (req, res) => {
@@ -297,19 +374,141 @@ router.post("/submit", protect, async (req, res) => {
   }
 });
 
+router.post("/customer-request", protect, async (req, res) => {
+  try {
+    const {
+      qrId,
+      showroomIds,
+      requestType,
+      preferredServiceDate,
+      notesSnapshot,
+    } = req.body;
+
+    if (!qrId) {
+      return res.status(400).json({ message: "QR ID required" });
+    }
+
+    const normalizedRequestType = normalizeRequestType(requestType);
+    if (!normalizedRequestType) {
+      return res.status(400).json({ message: "Invalid request type" });
+    }
+
+    const uniqueShowroomIds = Array.from(
+      new Set(
+        (Array.isArray(showroomIds) ? showroomIds : [])
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (!uniqueShowroomIds.length) {
+      return res.status(400).json({ message: "Select at least one showroom" });
+    }
+
+    const qr = await findOwnedQr(qrId, req.user._id);
+    if (!qr) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    const validShowrooms = await Showroom.find({
+      _id: { $in: uniqueShowroomIds },
+      $or: [{ isActive: true }, { isActive: { $exists: false } }],
+    }).select("_id");
+
+    if (!validShowrooms.length) {
+      return res.status(404).json({ message: "Showroom not found" });
+    }
+
+    const issues = buildCustomerRequestIssues({
+      requestType: normalizedRequestType,
+      preferredServiceDate,
+      notesSnapshot,
+    });
+
+    const requestPayload = validShowrooms.map((showroom) => ({
+      qr: qr._id,
+      qrId: qr.qrId,
+      user: req.user._id,
+      showroom: showroom._id,
+      vehicleNumber: qr.vehicleNumber || null,
+      requestType: normalizedRequestType,
+      issues,
+      preferredServiceDate:
+        normalizedRequestType === "service_booking" && preferredServiceDate
+          ? new Date(preferredServiceDate)
+          : null,
+      status: "new",
+      requestedAt: new Date(),
+    }));
+
+    const createdRequests = await ShowroomCustomerRequest.insertMany(
+      requestPayload
+    );
+
+    res.json({
+      message:
+        normalizedRequestType === "insurance_quote"
+          ? "Insurance quote request shared"
+          : "Service booking request shared",
+      data: createdRequests,
+    });
+  } catch (error) {
+    console.log("Create showroom customer request error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.get("/showroom/incoming", protectShowroom, async (req, res) => {
   try {
-    const notes = await ServiceNote.find({
-      selectedShowroom: req.showroom.id,
-      status: { $in: ["submitted", "in_service"] },
-    })
-      .select(
-        "qrId vehicleNumber issues status submittedAt inServiceAt createdAt updatedAt"
-      )
-      .sort({ submittedAt: -1, updatedAt: -1 })
-      .lean();
+    const [notes, customerRequests] = await Promise.all([
+      ServiceNote.find({
+        selectedShowroom: req.showroom.id,
+        status: { $in: ["submitted", "in_service"] },
+      })
+        .select(
+          "qrId vehicleNumber issues status submittedAt inServiceAt createdAt updatedAt"
+        )
+        .sort({ submittedAt: -1, updatedAt: -1 })
+        .lean(),
+      ShowroomCustomerRequest.find({
+        showroom: req.showroom.id,
+        status: { $in: ["new", "contacted"] },
+      })
+        .select(
+          "qrId vehicleNumber issues requestType status preferredServiceDate requestedAt createdAt updatedAt"
+        )
+        .sort({ requestedAt: -1, updatedAt: -1 })
+        .lean(),
+    ]);
 
-    res.json(notes);
+    const mappedNotes = notes.map((note) => ({
+      ...note,
+      entryType: "service_note",
+      requestType: "manual_note",
+      submittedAt: note.submittedAt || note.updatedAt || note.createdAt,
+      actionable: true,
+    }));
+
+    const mappedRequests = customerRequests.map((request) => ({
+      ...request,
+      entryType: "customer_request",
+      submittedAt:
+        request.requestedAt || request.updatedAt || request.createdAt,
+      actionable: false,
+    }));
+
+    const mergedItems = [...mappedRequests, ...mappedNotes].sort((a, b) => {
+      const aTime = new Date(
+        a.submittedAt || a.updatedAt || a.createdAt || 0
+      ).getTime();
+      const bTime = new Date(
+        b.submittedAt || b.updatedAt || b.createdAt || 0
+      ).getTime();
+
+      return bTime - aTime;
+    });
+
+    res.json(mergedItems);
   } catch (error) {
     console.log("Showroom incoming notes error", error);
     res.status(500).json({ message: "Server error" });
@@ -361,6 +560,36 @@ router.post("/showroom/start/:noteId", protectShowroom, async (req, res) => {
     });
   } catch (error) {
     console.log("Start showroom service note error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.delete("/:noteId", protect, async (req, res) => {
+  try {
+    const { noteId } = req.params;
+
+    const note = await ServiceNote.findOne({
+      _id: noteId,
+      user: req.user._id,
+    });
+
+    if (!note) {
+      return res.status(404).json({ message: "Service note not found" });
+    }
+
+    if (note.linkedService) {
+      return res.status(400).json({
+        message: "Completed service notes cannot be deleted.",
+      });
+    }
+
+    await note.deleteOne();
+
+    res.json({
+      message: "Service note deleted",
+    });
+  } catch (error) {
+    console.log("Delete service note error", error);
     res.status(500).json({ message: "Server error" });
   }
 });
