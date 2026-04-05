@@ -466,8 +466,9 @@ router.get("/showroom/incoming", protectShowroom, async (req, res) => {
         status: { $in: ["submitted", "in_service"] },
       })
         .select(
-          "qrId vehicleNumber issues status submittedAt inServiceAt createdAt updatedAt"
+          "qrId vehicleNumber user issues status submittedAt inServiceAt createdAt updatedAt"
         )
+        .populate("user", "mobile city")
         .sort({ submittedAt: -1, updatedAt: -1 })
         .lean(),
       ShowroomCustomerRequest.find({
@@ -475,8 +476,9 @@ router.get("/showroom/incoming", protectShowroom, async (req, res) => {
         status: { $in: ["new", "contacted"] },
       })
         .select(
-          "qrId vehicleNumber issues requestType status preferredServiceDate requestedAt createdAt updatedAt"
+          "qrId vehicleNumber user issues requestType status preferredServiceDate requestedAt createdAt updatedAt"
         )
+        .populate("user", "mobile city")
         .sort({ requestedAt: -1, updatedAt: -1 })
         .lean(),
     ]);
@@ -487,6 +489,10 @@ router.get("/showroom/incoming", protectShowroom, async (req, res) => {
       requestType: "manual_note",
       submittedAt: note.submittedAt || note.updatedAt || note.createdAt,
       actionable: true,
+      customer: {
+        mobile: note.user?.mobile || null,
+        city: note.user?.city || null,
+      },
     }));
 
     const mappedRequests = customerRequests.map((request) => ({
@@ -495,6 +501,10 @@ router.get("/showroom/incoming", protectShowroom, async (req, res) => {
       submittedAt:
         request.requestedAt || request.updatedAt || request.createdAt,
       actionable: false,
+      customer: {
+        mobile: request.user?.mobile || null,
+        city: request.user?.city || null,
+      },
     }));
 
     const mergedItems = [...mappedRequests, ...mappedNotes].sort((a, b) => {
