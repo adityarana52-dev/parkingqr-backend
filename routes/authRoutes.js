@@ -11,6 +11,12 @@ const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
+const DEFAULT_FAST2SMS_ROUTE = "dlt_manual";
+const DEFAULT_FAST2SMS_SENDER_ID = "GEPSMS";
+const DEFAULT_FAST2SMS_ENTITY_ID = "1201177428135766247";
+const DEFAULT_FAST2SMS_TEMPLATE_ID = "1207177522097367395";
+const DEFAULT_FAST2SMS_OTP_TEMPLATE =
+  "{otp} is your OTP for carbiQr login. Do not share it with anyone. Regards - Grantham Enterprises";
 
 function normalizeMobile(mobile) {
   return String(mobile || "").trim();
@@ -35,32 +41,31 @@ async function sendOtpSms(mobile, otp) {
     throw new Error("FAST2SMS API key is not configured.");
   }
 
-  const message =
-    process.env.FAST2SMS_OTP_MESSAGE ||
-    `Your ParkingQR OTP is ${otp}. Do not share.`;
+  const route = process.env.FAST2SMS_ROUTE || DEFAULT_FAST2SMS_ROUTE;
+  const senderId =
+    process.env.FAST2SMS_SENDER_ID || DEFAULT_FAST2SMS_SENDER_ID;
+  const entityId =
+    process.env.FAST2SMS_ENTITY_ID || DEFAULT_FAST2SMS_ENTITY_ID;
+  const templateId =
+    process.env.FAST2SMS_TEMPLATE_ID || DEFAULT_FAST2SMS_TEMPLATE_ID;
+  const otpTemplate =
+    process.env.FAST2SMS_OTP_MESSAGE || DEFAULT_FAST2SMS_OTP_TEMPLATE;
+  const message = otpTemplate.replace("{otp}", otp);
 
-  const payload = {
-    route: process.env.FAST2SMS_ROUTE || "q",
+  const payload = new URLSearchParams({
+    route,
+    sender_id: senderId,
+    template_id: templateId,
+    entity_id: entityId,
     message,
     numbers: mobile,
-  };
+    flash: "0",
+  });
 
-  if (process.env.FAST2SMS_SENDER_ID) {
-    payload.sender_id = process.env.FAST2SMS_SENDER_ID;
-  }
-
-  if (process.env.FAST2SMS_TEMPLATE_ID) {
-    payload.template_id = process.env.FAST2SMS_TEMPLATE_ID;
-  }
-
-  if (process.env.FAST2SMS_ENTITY_ID) {
-    payload.entity_id = process.env.FAST2SMS_ENTITY_ID;
-  }
-
-  await axios.post("https://www.fast2sms.com/dev/bulkV2", payload, {
+  await axios.post("https://www.fast2sms.com/dev/bulkV2", payload.toString(), {
     headers: {
       authorization: process.env.FAST2SMS_API_KEY,
-      "Content-Type": "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
     },
   });
 }
