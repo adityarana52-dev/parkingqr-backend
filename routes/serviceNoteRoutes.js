@@ -42,6 +42,11 @@ function getShowroomSortKey(showroom) {
   return String(showroom?.showroomCode || showroom?.name || "").toUpperCase();
 }
 
+function normalizeVehicleType(vehicleType) {
+  const value = String(vehicleType || "").trim().toLowerCase();
+  return value || null;
+}
+
 function normalizeRequestType(requestType) {
   if (requestType === "service" || requestType === "service_booking") {
     return "service_booking";
@@ -166,17 +171,13 @@ router.get("/showrooms/:qrId", protect, async (req, res) => {
 
     await qr.populate("showroom", "name showroomCode city vehicleType");
 
-    const queryFilter = qr.vehicleType
+    const normalizedVehicleType = normalizeVehicleType(qr.vehicleType);
+
+    const queryFilter = normalizedVehicleType
       ? {
           $and: [
             { $or: [{ isActive: true }, { isActive: { $exists: false } }] },
-            {
-              $or: [
-                { vehicleType: qr.vehicleType },
-                { vehicleType: null },
-                { vehicleType: { $exists: false } },
-              ],
-            },
+            { vehicleType: normalizedVehicleType },
           ],
         }
       : { $or: [{ isActive: true }, { isActive: { $exists: false } }] };
@@ -199,8 +200,14 @@ router.get("/showrooms/:qrId", protect, async (req, res) => {
 
     const mergedShowrooms = [...showrooms];
 
-    if (
+    const shouldIncludeActivatedShowroom =
       activatedShowroom &&
+      (!normalizedVehicleType ||
+        normalizeVehicleType(activatedShowroom.vehicleType) ===
+          normalizedVehicleType);
+
+    if (
+      shouldIncludeActivatedShowroom &&
       !mergedShowrooms.some(
         (showroom) => showroom._id.toString() === activatedShowroomId
       )
@@ -410,9 +417,12 @@ router.post("/customer-request", protect, async (req, res) => {
       return res.status(404).json({ message: "Vehicle not found" });
     }
 
+    const normalizedVehicleType = normalizeVehicleType(qr.vehicleType);
+
     const validShowrooms = await Showroom.find({
       _id: { $in: uniqueShowroomIds },
       $or: [{ isActive: true }, { isActive: { $exists: false } }],
+      ...(normalizedVehicleType ? { vehicleType: normalizedVehicleType } : {}),
     }).select("_id");
 
     if (!validShowrooms.length) {
