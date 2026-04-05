@@ -14,6 +14,8 @@ const generateToken = (user) => {
   );
 };
 
+exports.generateToken = generateToken;
+
 exports.loginUser = async (req, res) => {
   try {
     const { mobile } = req.body;

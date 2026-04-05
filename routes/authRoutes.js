@@ -1,92 +1,195 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
-const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const User = require("../models/User"); // ensure correct path
-const { loginUser } = require("../controllers/authController");
+const OtpSession = require("../models/OtpSession");
+const { loginUser, generateToken } = require("../controllers/authController");
+
+const OTP_LENGTH = 6;
+const OTP_TTL_MS = 5 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
+const OTP_MAX_ATTEMPTS = 5;
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
+
+function normalizeMobile(mobile) {
+  return String(mobile || "").trim();
+}
+
+function isValidMobile(mobile) {
+  return MOBILE_REGEX.test(normalizeMobile(mobile));
+}
+
+function generateOtp() {
+  const min = 10 ** (OTP_LENGTH - 1);
+  const max = 10 ** OTP_LENGTH - 1;
+  return String(Math.floor(min + Math.random() * (max - min + 1)));
+}
+
+function hashOtp(otp) {
+  return crypto.createHash("sha256").update(String(otp)).digest("hex");
+}
+
+async function sendOtpSms(mobile, otp) {
+  if (!process.env.FAST2SMS_API_KEY) {
+    throw new Error("FAST2SMS API key is not configured.");
+  }
+
+  const message =
+    process.env.FAST2SMS_OTP_MESSAGE ||
+    `Your ParkingQR OTP is ${otp}. Do not share.`;
+
+  const payload = {
+    route: process.env.FAST2SMS_ROUTE || "q",
+    message,
+    numbers: mobile,
+  };
+
+  if (process.env.FAST2SMS_SENDER_ID) {
+    payload.sender_id = process.env.FAST2SMS_SENDER_ID;
+  }
+
+  if (process.env.FAST2SMS_TEMPLATE_ID) {
+    payload.template_id = process.env.FAST2SMS_TEMPLATE_ID;
+  }
+
+  if (process.env.FAST2SMS_ENTITY_ID) {
+    payload.entity_id = process.env.FAST2SMS_ENTITY_ID;
+  }
+
+  await axios.post("https://www.fast2sms.com/dev/bulkV2", payload, {
+    headers: {
+      authorization: process.env.FAST2SMS_API_KEY,
+      "Content-Type": "application/json",
+    },
+  });
+}
 
 router.post("/login", loginUser);
 
-// ================= SEND OTP =================
-router.post("/send-otp", async (req, res) => {
-  const { mobile } = req.body;
-
-  const mobileStr = String(mobile);
-
-  console.log("MOBILE:", mobileStr);
-
-  // OTP generate
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
+async function handleSendOtp(req, res) {
   try {
-    // Send SMS
-    await axios.post(
-      "https://www.fast2sms.com/dev/bulkV2",
-      {
-        route: "q",
-        message: `Your ParkingQR OTP is ${otp}. Do not share.`,
-        numbers: mobileStr,
-      },
-      {
-        headers: {
-          authorization: process.env.FAST2SMS_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const mobile = normalizeMobile(req.body?.mobile);
 
-    // Store OTP
-    global.otpStore = global.otpStore || {};
-    global.otpStore[mobileStr] = otp;
+    if (!isValidMobile(mobile)) {
+      return res.status(400).json({ message: "Valid mobile number required" });
+    }
 
-    console.log("OTP STORED:", otp);
+    const now = new Date();
+    const existingSession = await OtpSession.findOne({ mobile });
 
-    res.json({ success: true });
+    if (
+      existingSession?.lastSentAt &&
+      now.getTime() - existingSession.lastSentAt.getTime() <
+        OTP_RESEND_COOLDOWN_MS
+    ) {
+      const retryAfterSeconds = Math.ceil(
+        (OTP_RESEND_COOLDOWN_MS -
+          (now.getTime() - existingSession.lastSentAt.getTime())) /
+          1000
+      );
 
+      return res.status(429).json({
+        message: `Please wait ${retryAfterSeconds}s before requesting OTP again.`,
+      });
+    }
+
+    const otp = generateOtp();
+    await sendOtpSms(mobile, otp);
+
+    const expiresAt = new Date(now.getTime() + OTP_TTL_MS);
+
+    if (existingSession) {
+      existingSession.otpHash = hashOtp(otp);
+      existingSession.expiresAt = expiresAt;
+      existingSession.attempts = 0;
+      existingSession.resendCount = (existingSession.resendCount || 0) + 1;
+      existingSession.lastSentAt = now;
+      await existingSession.save();
+    } else {
+      await OtpSession.create({
+        mobile,
+        otpHash: hashOtp(otp),
+        expiresAt,
+        attempts: 0,
+        resendCount: 1,
+        lastSentAt: now,
+      });
+    }
+
+    res.json({
+      success: true,
+      expiresInSeconds: OTP_TTL_MS / 1000,
+      resendAfterSeconds: OTP_RESEND_COOLDOWN_MS / 1000,
+    });
   } catch (error) {
-    console.log("SMS ERROR:", error.response?.data || error.message);
-    res.status(500).json({ message: "OTP send failed" });
+    console.log("OTP send error:", error.response?.data || error.message);
+    res.status(500).json({
+      message:
+        error.message === "FAST2SMS API key is not configured."
+          ? error.message
+          : "OTP send failed",
+    });
   }
-});
+}
+
+// ================= SEND OTP =================
+router.post("/send-otp", handleSendOtp);
+
+router.post("/resend-otp", handleSendOtp);
 
 // ================= VERIFY OTP =================
 router.post("/verify-otp", async (req, res) => {
-  const { mobile, otp } = req.body;
-
-  const mobileStr = String(mobile);
-  const enteredOtp = String(otp);
-
-  console.log("VERIFY MOBILE:", mobileStr);
-  console.log("ENTERED OTP:", enteredOtp);
-  console.log("STORED OTP:", global.otpStore?.[mobileStr]);
-
-  // Check OTP
-  if (
-    !global.otpStore ||
-    global.otpStore[mobileStr] !== enteredOtp
-  ) {
-    return res.status(400).json({ message: "Invalid OTP" });
-  }
-
   try {
-    let user = await User.findOne({ mobile: mobileStr });
+    const mobile = normalizeMobile(req.body?.mobile);
+    const otp = String(req.body?.otp || "").trim();
 
-    if (!user) {
-      user = await User.create({ mobile: mobileStr });
+    if (!isValidMobile(mobile)) {
+      return res.status(400).json({ message: "Valid mobile number required" });
     }
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET
-    );
+    if (!otp || otp.length !== OTP_LENGTH) {
+      return res.status(400).json({ message: "Valid OTP required" });
+    }
 
-    // delete OTP after success
-    delete global.otpStore[mobileStr];
+    const otpSession = await OtpSession.findOne({ mobile });
+
+    if (!otpSession) {
+      return res.status(400).json({ message: "OTP not found. Please request again." });
+    }
+
+    if (otpSession.expiresAt.getTime() < Date.now()) {
+      await otpSession.deleteOne();
+      return res.status(400).json({ message: "OTP expired. Please request again." });
+    }
+
+    if ((otpSession.attempts || 0) >= OTP_MAX_ATTEMPTS) {
+      await otpSession.deleteOne();
+      return res.status(429).json({
+        message: "Too many invalid attempts. Please request a new OTP.",
+      });
+    }
+
+    const enteredOtpHash = hashOtp(otp);
+
+    if (otpSession.otpHash !== enteredOtpHash) {
+      otpSession.attempts = (otpSession.attempts || 0) + 1;
+      await otpSession.save();
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    let user = await User.findOne({ mobile });
+
+    if (!user) {
+      user = await User.create({ mobile });
+    }
+
+    const token = generateToken(user);
+    await otpSession.deleteOne();
 
     res.json({ token });
-
   } catch (error) {
-    console.log("VERIFY ERROR:", error.message);
+    console.log("Verify OTP error:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 });
