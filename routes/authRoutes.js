@@ -21,6 +21,8 @@ const DEFAULT_FAST2SMS_ENTITY_ID = "1201177428135766247";
 const DEFAULT_FAST2SMS_TEMPLATE_ID = "1207177522097367395";
 const DEFAULT_FAST2SMS_OTP_TEMPLATE =
   "{otp} is your OTP for carbiQr login. Do not share it with anyone. Regards - Grantham Enterprises";
+const DEFAULT_REVIEWER_MOBILE = "1111111168";
+const DEFAULT_REVIEWER_OTP = "111111";
 
 function normalizeMobile(mobile) {
   return String(mobile || "").trim();
@@ -28,6 +30,18 @@ function normalizeMobile(mobile) {
 
 function isValidMobile(mobile) {
   return MOBILE_REGEX.test(normalizeMobile(mobile));
+}
+
+function getReviewerMobile() {
+  return normalizeMobile(process.env.REVIEWER_MOBILE) || DEFAULT_REVIEWER_MOBILE;
+}
+
+function getReviewerOtp() {
+  return String(process.env.REVIEWER_OTP || DEFAULT_REVIEWER_OTP).trim();
+}
+
+function isReviewerMobile(mobile) {
+  return normalizeMobile(mobile) === getReviewerMobile();
 }
 
 function generateOtp() {
@@ -86,6 +100,7 @@ async function handleSendOtp(req, res) {
 
     const now = new Date();
     const existingSession = await OtpSession.findOne({ mobile });
+    const isReviewer = isReviewerMobile(mobile);
 
     if (
       existingSession?.lastSentAt &&
@@ -103,8 +118,11 @@ async function handleSendOtp(req, res) {
       });
     }
 
-    const otp = generateOtp();
-    await sendOtpSms(mobile, otp);
+    const otp = isReviewer ? getReviewerOtp() : generateOtp();
+
+    if (!isReviewer) {
+      await sendOtpSms(mobile, otp);
+    }
 
     const expiresAt = new Date(now.getTime() + OTP_TTL_MS);
 
@@ -130,6 +148,7 @@ async function handleSendOtp(req, res) {
       success: true,
       expiresInSeconds: OTP_TTL_MS / 1000,
       resendAfterSeconds: OTP_RESEND_COOLDOWN_MS / 1000,
+      reviewerMode: isReviewer,
     });
   } catch (error) {
     console.log("OTP send error:", error.response?.data || error.message);
