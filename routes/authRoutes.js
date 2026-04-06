@@ -21,7 +21,7 @@ const DEFAULT_FAST2SMS_ENTITY_ID = "1201177428135766247";
 const DEFAULT_FAST2SMS_TEMPLATE_ID = "1207177522097367395";
 const DEFAULT_FAST2SMS_OTP_TEMPLATE =
   "{otp} is your OTP for carbiQr login. Do not share it with anyone. Regards - Grantham Enterprises";
-const DEFAULT_REVIEWER_MOBILE = "1111111168";
+const DEFAULT_REVIEWER_MOBILE = "9109052412";
 const DEFAULT_REVIEWER_OTP = "111111";
 
 function normalizeMobile(mobile) {
