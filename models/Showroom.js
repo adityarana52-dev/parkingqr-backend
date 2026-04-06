@@ -40,6 +40,11 @@ const showroomSchema = new mongoose.Schema(
       default: null,
     },
 
+    expoPushToken: {
+      type: String,
+      default: null,
+    },
+
     addressLine1:{
       type:String,
       required:true

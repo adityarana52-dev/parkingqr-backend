@@ -6,6 +6,7 @@ const QrCode = require("../models/QrCode");
 const Showroom = require("../models/Showroom");
 const ServiceNote = require("../models/ServiceNote");
 const ShowroomCustomerRequest = require("../models/ShowroomCustomerRequest");
+const sendPushNotification = require("../utils/sendPushNotification");
 
 function normalizeIssues(issues = []) {
   if (!Array.isArray(issues)) {
@@ -121,6 +122,14 @@ function buildCustomerRequestIssues({
         ];
 
   return dedupeIssueObjects([...baseIssues, ...autoIssues]).slice(0, 12);
+}
+
+async function notifyShowroom(showroom, title, body, data = {}) {
+  if (!showroom?.expoPushToken) {
+    return;
+  }
+
+  await sendPushNotification(showroom.expoPushToken, title, body, data);
 }
 
 router.get("/my/:qrId", protect, async (req, res) => {
@@ -326,7 +335,7 @@ router.post("/submit", protect, async (req, res) => {
     }
 
     const showroom = await Showroom.findById(showroomId).select(
-      "name showroomCode city isActive"
+      "name showroomCode city isActive expoPushToken"
     );
     if (!showroom || showroom.isActive === false) {
       return res.status(404).json({ message: "Showroom not found" });
@@ -370,6 +379,17 @@ router.post("/submit", protect, async (req, res) => {
 
     await note.populate("activatedShowroom", "name showroomCode city");
     await note.populate("selectedShowroom", "name showroomCode city");
+
+    await notifyShowroom(
+      showroom,
+      "New Service Note",
+      `${note.vehicleNumber || note.qrId} has submitted service notes for your showroom.`,
+      {
+        type: "SHOWROOM_SERVICE_NOTE",
+        qrId: note.qrId,
+        noteId: note._id?.toString(),
+      }
+    );
 
     res.json({
       message: "Service request submitted",
@@ -423,7 +443,7 @@ router.post("/customer-request", protect, async (req, res) => {
       _id: { $in: uniqueShowroomIds },
       $or: [{ isActive: true }, { isActive: { $exists: false } }],
       ...(normalizedVehicleType ? { vehicleType: normalizedVehicleType } : {}),
-    }).select("_id");
+    }).select("_id name showroomCode expoPushToken");
 
     if (!validShowrooms.length) {
       return res.status(404).json({ message: "Showroom not found" });
@@ -453,6 +473,28 @@ router.post("/customer-request", protect, async (req, res) => {
 
     const createdRequests = await ShowroomCustomerRequest.insertMany(
       requestPayload
+    );
+
+    await Promise.all(
+      validShowrooms.map((showroom) =>
+        notifyShowroom(
+          showroom,
+          normalizedRequestType === "insurance_quote"
+            ? "New Insurance Quote Request"
+            : "New Service Booking Request",
+          normalizedRequestType === "insurance_quote"
+            ? `${qr.vehicleNumber || qr.qrId} requested an insurance quote.`
+            : `${qr.vehicleNumber || qr.qrId} requested a service booking.`,
+          {
+            type:
+              normalizedRequestType === "insurance_quote"
+                ? "SHOWROOM_INSURANCE_QUOTE"
+                : "SHOWROOM_SERVICE_BOOKING",
+            qrId: qr.qrId,
+            vehicleNumber: qr.vehicleNumber || null,
+          }
+        )
+      )
     );
 
     res.json({

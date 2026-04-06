@@ -614,6 +614,30 @@ router.post("/login", async (req, res) => {
 
 });
 
+router.put("/save-push-token", protectShowroom, async (req, res) => {
+  try {
+    const { pushToken } = req.body;
+
+    if (!pushToken) {
+      return res.status(400).json({ message: "Push token required" });
+    }
+
+    const showroom = await Showroom.findById(req.showroom.id);
+
+    if (!showroom) {
+      return res.status(404).json({ message: "Showroom not found" });
+    }
+
+    showroom.expoPushToken = pushToken;
+    await showroom.save();
+
+    res.json({ message: "Push token saved" });
+  } catch (error) {
+    console.log("Save showroom push token error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 router.get("/qr-stock", protectShowroom, async (req, res) => {
 
