@@ -50,6 +50,12 @@ router.put("/:qrId/number", protect, async (req, res) => {
       return res.status(404).json({ message: "Activated vehicle not found" });
     }
 
+    if (normalizeVehicleNumber(qr.vehicleNumber)) {
+      return res.status(400).json({
+        message: "Vehicle number is already linked and cannot be changed again",
+      });
+    }
+
     qr.vehicleNumber = normalizedVehicleNumber;
     await qr.save();
 
