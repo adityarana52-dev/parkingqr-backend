@@ -227,11 +227,30 @@ app.get("/scan/:qrId", async (req, res) => {
                   longitude: cachedLng,
                   accuracy: cachedAccuracy
                 })
-              }).then(() => {
+              })
+              .then(async (response) => {
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                  document.body.innerHTML =
+                    "<div style='text-align:center;padding:40px;font-family:Arial'>" +
+                    "<h2>Please Wait</h2>" +
+                    "<p>" + (data.message || "A request was already sent recently. Please wait 2 minutes before sending another request.") + "</p>" +
+                    "</div>";
+                  return;
+                }
+
                 document.body.innerHTML =
                   "<div style='text-align:center;padding:40px;font-family:Arial'>" +
-                  "<h2>✅ Request Sent</h2>" +
-                  "<p>The vehicle owner has been notified.</p>" +
+                  "<h2>Request Sent</h2>" +
+                  "<p>" + (data.message || "The vehicle owner has been notified.") + "</p>" +
+                  "</div>";
+              })
+              .catch(() => {
+                document.body.innerHTML =
+                  "<div style='text-align:center;padding:40px;font-family:Arial'>" +
+                  "<h2>Error</h2>" +
+                  "<p>Something went wrong. Please try again.</p>" +
                   "</div>";
               });
             }

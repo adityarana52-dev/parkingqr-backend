@@ -33,6 +33,10 @@ function getVehicleDisplayNumber(vehicleNumber) {
   return normalizeVehicleNumber(vehicleNumber) || "NEW VEHICLE";
 }
 
+function wantsJsonResponse(req) {
+  return req.is("application/json") || req.get("accept")?.includes("application/json");
+}
+
 // ✅ Get QR Details (Showroom + Salespersons)
 
 router.get("/details/:qrId", async (req,res)=>{
@@ -551,6 +555,14 @@ router.get("/public/:qrId", async (req, res) => {
               document.getElementById("moveForm").addEventListener("submit", function(e) {
                 e.preventDefault();
 
+                function renderStatus(title, message) {
+                  document.body.innerHTML =
+                    "<div style='text-align:center;padding:40px;font-family:Arial'>" +
+                    "<h2>" + title + "</h2>" +
+                    "<p>" + message + "</p>" +
+                    "</div>";
+                }
+
                 function sendRequest(lat, lng) {
                   fetch("/api/qr/move-request", {
                     method: "POST",
@@ -563,12 +575,25 @@ router.get("/public/:qrId", async (req, res) => {
                       latitude: lat,
                       longitude: lng
                     })
-                  }).then(() => {
-                    document.body.innerHTML =
-                      "<div style='text-align:center;padding:40px;font-family:Arial'>" +
-                      "<h2>✅ Request Sent</h2>" +
-                      "<p>The vehicle owner has been notified.</p>" +
-                      "</div>";
+                  })
+                  .then(async (response) => {
+                    const data = await response.json().catch(() => ({}));
+
+                    if (!response.ok) {
+                      renderStatus(
+                        "Please Wait",
+                        data.message || "A request was already sent recently. Please wait 2 minutes before sending another request."
+                      );
+                      return;
+                    }
+
+                    renderStatus(
+                      "Request Sent",
+                      data.message || "The vehicle owner has been notified."
+                    );
+                  })
+                  .catch(() => {
+                    renderStatus("Error", "Something went wrong. Please try again.");
                   });
                 }
 
@@ -625,12 +650,21 @@ router.post("/move-request", async (req, res) => {
     });
 
     if (recentRequest) {
-      return res.send(`
+      const message =
+        "A request was already sent recently. Please wait 2 minutes before sending another request.";
+
+      if (wantsJsonResponse(req)) {
+        return res.status(429).json({
+          blocked: true,
+          message,
+        });
+      }
+
+      return res.status(429).send(`
         <html>
           <body style="text-align:center; font-family:Arial; padding:40px;">
-            <h2>⚠ Please Wait</h2>
-            <p>A request was already sent recently.</p>
-            <p>Please wait 2 minutes before sending another request.</p>
+            <h2>Please Wait</h2>
+            <p>${message}</p>
           </body>
         </html>
       `);
@@ -676,10 +710,17 @@ router.post("/move-request", async (req, res) => {
 );
     }
 
+    if (wantsJsonResponse(req)) {
+      return res.json({
+        success: true,
+        message: "The vehicle owner has been notified.",
+      });
+    }
+
     res.send(`
       <html>
         <body style="text-align:center; font-family:Arial; padding:40px;">
-          <h2>✅ Request Sent</h2>
+          <h2>Request Sent</h2>
           <p>The vehicle owner has been notified.</p>
         </body>
       </html>
