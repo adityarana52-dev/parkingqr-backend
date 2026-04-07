@@ -13,6 +13,45 @@ const path = require("path");
 const StateCounter = require("../models/StateCounter");
 const bcrypt = require("bcryptjs");
 const CommissionWithdrawal = require("../models/CommissionWithdrawal");
+const protect = require("../middleware/authMiddleware");
+const adminOnly = require("../middleware/adminMiddleware");
+const sendPushNotification = require("../utils/sendPushNotification");
+const AdminNotification = require("../models/AdminNotification");
+
+function buildAdminAudienceFilter(audience) {
+  const normalizedAudience = String(audience || "all_users").toLowerCase();
+
+  if (normalizedAudience === "active_subscribers") {
+    return {
+      subscriptionActive: true,
+      subscriptionExpiresAt: { $gte: new Date() },
+    };
+  }
+
+  if (normalizedAudience === "inactive_users") {
+    return {
+      $or: [
+        { subscriptionActive: false },
+        { subscriptionExpiresAt: { $lt: new Date() } },
+        { subscriptionExpiresAt: null },
+      ],
+    };
+  }
+
+  return {};
+}
+
+function getAudienceLabel(audience) {
+  switch (audience) {
+    case "active_subscribers":
+      return "Active Subscribers";
+    case "inactive_users":
+      return "Inactive Users";
+    case "all_users":
+    default:
+      return "All Users";
+  }
+}
 
 router.get("/qr-requests", async (req, res) => {
 
@@ -662,6 +701,92 @@ res.json({message:"Ticket closed"});
 }catch(err){
 res.status(500).json({message:"Server error"});
 }
+});
+
+router.post("/notifications/send", protect, adminOnly, async (req, res) => {
+  try {
+    const { title, message, audience = "all_users" } = req.body;
+
+    const normalizedTitle = String(title || "").trim();
+    const normalizedMessage = String(message || "").trim();
+    const normalizedAudience = String(audience || "all_users").trim().toLowerCase();
+
+    if (!normalizedTitle || !normalizedMessage) {
+      return res.status(400).json({ message: "Title and message are required" });
+    }
+
+    if (
+      !["all_users", "active_subscribers", "inactive_users"].includes(
+        normalizedAudience
+      )
+    ) {
+      return res.status(400).json({ message: "Invalid audience selected" });
+    }
+
+    const audienceFilter = buildAdminAudienceFilter(normalizedAudience);
+
+    const users = await User.find({
+      expoPushToken: { $ne: null },
+      ...audienceFilter,
+    }).select("_id expoPushToken mobile subscriptionActive subscriptionExpiresAt");
+
+    const uniqueTokens = Array.from(
+      new Set(
+        users
+          .map((user) => String(user.expoPushToken || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    const results = await Promise.allSettled(
+      uniqueTokens.map((token) =>
+        sendPushNotification(token, normalizedTitle, normalizedMessage, {
+          type: "ADMIN_BROADCAST",
+          audience: normalizedAudience,
+        })
+      )
+    );
+
+    const deliveredCount = results.filter(
+      (item) => item.status === "fulfilled" && item.value?.ok
+    ).length;
+    const failedCount = uniqueTokens.length - deliveredCount;
+
+    const notification = await AdminNotification.create({
+      createdBy: req.user?._id || null,
+      title: normalizedTitle,
+      message: normalizedMessage,
+      audience: normalizedAudience,
+      recipientCount: uniqueTokens.length,
+      deliveredCount,
+      failedCount,
+    });
+
+    res.json({
+      message: `Notification queued for ${uniqueTokens.length} users`,
+      data: notification,
+      recipientCount: uniqueTokens.length,
+      deliveredCount,
+      failedCount,
+    });
+  } catch (error) {
+    console.log("Admin notification send error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/notifications/history", protect, adminOnly, async (req, res) => {
+  try {
+    const history = await AdminNotification.find()
+      .populate("createdBy", "mobile")
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    res.json(history);
+  } catch (error) {
+    console.log("Admin notification history error", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 module.exports = router;
