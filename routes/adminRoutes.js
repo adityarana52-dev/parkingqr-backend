@@ -17,6 +17,13 @@ const protect = require("../middleware/authMiddleware");
 const adminOnly = require("../middleware/adminMiddleware");
 const sendPushNotification = require("../utils/sendPushNotification");
 const AdminNotification = require("../models/AdminNotification");
+const EmployeeAccess = require("../models/EmployeeAccess");
+
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
+
+function normalizeMobile(mobile) {
+  return String(mobile || "").trim();
+}
 
 function buildAdminAudienceFilter(audience) {
   const normalizedAudience = String(audience || "all_users").toLowerCase();
@@ -51,6 +58,10 @@ function getAudienceLabel(audience) {
     default:
       return "All Users";
   }
+}
+
+function isValidMobile(mobile) {
+  return MOBILE_REGEX.test(normalizeMobile(mobile));
 }
 
 router.get("/qr-requests", async (req, res) => {
@@ -785,6 +796,72 @@ router.get("/notifications/history", protect, adminOnly, async (req, res) => {
     res.json(history);
   } catch (error) {
     console.log("Admin notification history error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/employees", protect, adminOnly, async (req, res) => {
+  try {
+    const employees = await EmployeeAccess.find()
+      .populate("addedBy", "mobile")
+      .sort({ updatedAt: -1, createdAt: -1 });
+
+    res.json(employees);
+  } catch (error) {
+    console.log("Employee access fetch error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/employees", protect, adminOnly, async (req, res) => {
+  try {
+    const mobile = normalizeMobile(req.body?.mobile);
+    const name = String(req.body?.name || "").trim();
+    const role = String(req.body?.role || "employee").trim().toLowerCase();
+
+    if (!isValidMobile(mobile)) {
+      return res.status(400).json({ message: "Valid mobile number required" });
+    }
+
+    if (role !== "employee") {
+      return res.status(400).json({ message: "Invalid employee role selected" });
+    }
+
+    const existingUser = await User.findOne({ mobile });
+
+    if (existingUser?.role === "admin") {
+      return res
+        .status(400)
+        .json({ message: "Admin mobile cannot be added as employee" });
+    }
+
+    const employeeAccess = await EmployeeAccess.findOneAndUpdate(
+      { mobile },
+      {
+        mobile,
+        name,
+        role,
+        isActive: true,
+        addedBy: req.user?._id || null,
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    ).populate("addedBy", "mobile");
+
+    if (existingUser && existingUser.role !== "employee") {
+      existingUser.role = "employee";
+      await existingUser.save();
+    }
+
+    res.json({
+      message: "Employee access saved successfully",
+      data: employeeAccess,
+    });
+  } catch (error) {
+    console.log("Employee access save error", error);
     res.status(500).json({ message: "Server error" });
   }
 });

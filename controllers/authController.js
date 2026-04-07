@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const EmployeeAccess = require("../models/EmployeeAccess");
 const jwt = require("jsonwebtoken");
 const DEFAULT_ADMIN_MOBILE = "9827082531";
 
@@ -24,9 +25,25 @@ function normalizeMobile(mobile) {
 async function ensureUserRole(user) {
   const adminMobile =
     normalizeMobile(process.env.ADMIN_MOBILE) || DEFAULT_ADMIN_MOBILE;
+  const normalizedMobile = normalizeMobile(user?.mobile);
 
-  if (normalizeMobile(user?.mobile) === adminMobile && user.role !== "admin") {
-    user.role = "admin";
+  let targetRole = "user";
+
+  if (normalizedMobile === adminMobile) {
+    targetRole = "admin";
+  } else {
+    const employeeAccess = await EmployeeAccess.findOne({
+      mobile: normalizedMobile,
+      isActive: true,
+    }).select("role");
+
+    if (employeeAccess?.role === "employee") {
+      targetRole = "employee";
+    }
+  }
+
+  if (user.role !== targetRole) {
+    user.role = targetRole;
     await user.save();
   }
 
