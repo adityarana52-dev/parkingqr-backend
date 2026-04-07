@@ -799,7 +799,7 @@ message,
 
 
 // save history
-await OfferLog.create({
+const createdOffer = await OfferLog.create({
 showroomId:showroomId,
 message:message
 });
@@ -807,7 +807,8 @@ message:message
 
 res.json({
 message:"Offer sent successfully",
-totalUsers:users.length
+totalUsers:users.length,
+offer: createdOffer
 });
 
 }catch(error){
@@ -1184,12 +1185,9 @@ const startOfMonth = new Date();
 startOfMonth.setDate(1);
 startOfMonth.setHours(0,0,0,0);
 
-const limitDate = new Date();
-limitDate.setDate(limitDate.getDate() - 30);
-
 const offers = await OfferLog.find({
-showroomId:{$in:showroomIds},
-createdAt:{$gte:limitDate}
+showroomId:showroomId,
+createdAt:{$gte:startOfMonth}
 })
 .populate("showroomId","name")
 .sort({createdAt:-1});
