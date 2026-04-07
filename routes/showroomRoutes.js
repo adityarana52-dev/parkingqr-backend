@@ -996,7 +996,7 @@ qr.assignedTo.expoPushToken,
 
 `${qr.showroom?.name || "Vehicle Reminder"} Insurance Reminder`,
 
-message || `Insurance for vehicle ${qr.vehicleNumber} is expiring soon. Please visit ${qr.showroom?.name || "our showroom"} for renewal.`,
+message || `Insurance for vehicle ${qr.vehicleNumber || "NEW VEHICLE"} is expiring soon. Please visit ${qr.showroom?.name || "our showroom"} for renewal.`,
 
 { type: "insurance-reminder" }
 
@@ -1093,7 +1093,7 @@ qr.assignedTo.expoPushToken,
 
 `${qr.showroom?.name || "Vehicle Reminder"} Service Reminder`,
 
-message || `Vehicle ${qr.vehicleNumber} service is due. Please visit ${qr.showroom?.name || "our showroom"} for service.`,
+message || `Vehicle ${qr.vehicleNumber || "NEW VEHICLE"} service is due. Please visit ${qr.showroom?.name || "our showroom"} for service.`,
 
 { type: "service-reminder" }
 

@@ -22,6 +22,17 @@ const {
 
 console.log("QR ROUTES LOADED");
 
+function normalizeVehicleNumber(value) {
+  return String(value || "")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .toUpperCase()
+    .trim();
+}
+
+function getVehicleDisplayNumber(vehicleNumber) {
+  return normalizeVehicleNumber(vehicleNumber) || "NEW VEHICLE";
+}
+
 // ✅ Get QR Details (Showroom + Salespersons)
 
 router.get("/details/:qrId", async (req,res)=>{
@@ -201,9 +212,20 @@ router.post("/activate", protect, async (req, res) => {
     }
 
 
-    const { qrId, vehicleNumber, vehicleType, salesPerson, insuranceDate, serviceDate } = req.body;
+    const {
+      qrId,
+      vehicleNumber,
+      vehicleType,
+      salesPerson,
+      insuranceDate,
+      serviceDate,
+      isNewVehicle,
+    } = req.body;
+    const normalizedVehicleNumber = normalizeVehicleNumber(vehicleNumber);
+    const pendingVehicleActivation =
+      isNewVehicle === true || isNewVehicle === "true";
 
-    if (!qrId || !vehicleNumber) {
+    if (!qrId || (!pendingVehicleActivation && !normalizedVehicleNumber)) {
       return res.status(400).json({
         message: "QR ID and vehicle number required",
       });
@@ -306,7 +328,9 @@ router.post("/activate", protect, async (req, res) => {
             qr.assignedTo = req.user._id;
           }
 
-          qr.vehicleNumber = vehicleNumber;
+          qr.vehicleNumber = pendingVehicleActivation
+            ? null
+            : normalizedVehicleNumber;
           qr.vehicleType = vehicleType;
 
           qr.insuranceStartDate = insuranceDate || null;
@@ -515,7 +539,7 @@ router.get("/public/:qrId", async (req, res) => {
         <body>
           <div class="card">
             <h2>🚗 Vehicle Details</h2>
-            <p><strong>Vehicle Number:</strong> ${qr.vehicleNumber}</p>
+            <p><strong>Vehicle Number:</strong> ${getVehicleDisplayNumber(qr.vehicleNumber)}</p>
             <p><strong>Showroom:</strong> ${qr.showroom ? qr.showroom.name : "N/A"}</p>
             <p><strong>Owner Contact:</strong> ${masked}</p>
 
@@ -641,8 +665,8 @@ router.post("/move-request", async (req, res) => {
         : "🚗 Move Request";
 
       const message = isTow
-        ? `Towing request initiated for vehicle ${qrData.vehicleNumber}`
-        : `Someone requested to move vehicle ${qrData.vehicleNumber}`;
+        ? `Towing request initiated for vehicle ${getVehicleDisplayNumber(qrData.vehicleNumber)}`
+        : `Someone requested to move vehicle ${getVehicleDisplayNumber(qrData.vehicleNumber)}`;
         
       await sendPushNotification(
       qrData.assignedTo.expoPushToken,

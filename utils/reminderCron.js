@@ -48,7 +48,7 @@ qr.assignedTo.expoPushToken,
 
 `${qr.showroom?.name || "Vehicle Reminder"}`,
 
-`Insurance for ${qr.vehicleNumber} expires in ${daysLeft} day(s).
+`Insurance for ${qr.vehicleNumber || "NEW VEHICLE"} expires in ${daysLeft} day(s).
 
 Please visit ${qr.showroom?.name || "nearest service center"} for renewal.`,
 
@@ -85,7 +85,7 @@ for (const qr of serviceVehicles) {
 
       `${qr.showroom?.name || "Service Reminder"}`,
 
-      `Vehicle ${qr.vehicleNumber} service is due in ${daysLeft} day(s).`,
+      `Vehicle ${qr.vehicleNumber || "NEW VEHICLE"} service is due in ${daysLeft} day(s).`,
 
       {
         type: "SERVICE_REMINDER",

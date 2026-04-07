@@ -164,7 +164,7 @@ app.get("/scan/:qrId", async (req, res) => {
 
       <div class="info">
         <span class="label">Vehicle Number:</span><br>
-        ${qr.vehicleNumber || "N/A"}
+        ${qr.vehicleNumber || "NEW VEHICLE"}
       </div>
 
       <div class="info">
