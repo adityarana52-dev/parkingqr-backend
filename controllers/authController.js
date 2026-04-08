@@ -2,6 +2,7 @@ const User = require("../models/User");
 const EmployeeAccess = require("../models/EmployeeAccess");
 const jwt = require("jsonwebtoken");
 const DEFAULT_ADMIN_MOBILE = "9827082531";
+const DEFAULT_REVIEW_ADMIN_MOBILE = "8827242738";
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -25,11 +26,17 @@ function normalizeMobile(mobile) {
 async function ensureUserRole(user) {
   const adminMobile =
     normalizeMobile(process.env.ADMIN_MOBILE) || DEFAULT_ADMIN_MOBILE;
+  const reviewAdminMobile =
+    normalizeMobile(process.env.REVIEW_ADMIN_MOBILE) ||
+    DEFAULT_REVIEW_ADMIN_MOBILE;
   const normalizedMobile = normalizeMobile(user?.mobile);
 
   let targetRole = "user";
 
-  if (normalizedMobile === adminMobile) {
+  if (
+    normalizedMobile === adminMobile ||
+    normalizedMobile === reviewAdminMobile
+  ) {
     targetRole = "admin";
   } else {
     const employeeAccess = await EmployeeAccess.findOne({

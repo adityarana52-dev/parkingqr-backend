@@ -23,6 +23,8 @@ const DEFAULT_FAST2SMS_OTP_TEMPLATE =
   "{otp} is your OTP for carbiQr login. Do not share it with anyone. Regards - Grantham Enterprises";
 const DEFAULT_REVIEWER_MOBILE = "9109052412";
 const DEFAULT_REVIEWER_OTP = "111111";
+const DEFAULT_REVIEW_ADMIN_MOBILE = "8827242738";
+const DEFAULT_REVIEW_ADMIN_OTP = "222222";
 
 function normalizeMobile(mobile) {
   return String(mobile || "").trim();
@@ -40,8 +42,43 @@ function getReviewerOtp() {
   return String(process.env.REVIEWER_OTP || DEFAULT_REVIEWER_OTP).trim();
 }
 
-function isReviewerMobile(mobile) {
-  return normalizeMobile(mobile) === getReviewerMobile();
+function getReviewAdminMobile() {
+  return (
+    normalizeMobile(process.env.REVIEW_ADMIN_MOBILE) ||
+    DEFAULT_REVIEW_ADMIN_MOBILE
+  );
+}
+
+function getReviewAdminOtp() {
+  return String(
+    process.env.REVIEW_ADMIN_OTP || DEFAULT_REVIEW_ADMIN_OTP
+  ).trim();
+}
+
+function getReviewLoginConfig(mobile) {
+  const normalizedMobile = normalizeMobile(mobile);
+
+  if (normalizedMobile === getReviewerMobile()) {
+    return {
+      reviewerMode: true,
+      reviewRole: "user",
+      otp: getReviewerOtp(),
+    };
+  }
+
+  if (normalizedMobile === getReviewAdminMobile()) {
+    return {
+      reviewerMode: true,
+      reviewRole: "admin",
+      otp: getReviewAdminOtp(),
+    };
+  }
+
+  return {
+    reviewerMode: false,
+    reviewRole: null,
+    otp: null,
+  };
 }
 
 function generateOtp() {
@@ -100,7 +137,8 @@ async function handleSendOtp(req, res) {
 
     const now = new Date();
     const existingSession = await OtpSession.findOne({ mobile });
-    const isReviewer = isReviewerMobile(mobile);
+    const reviewLogin = getReviewLoginConfig(mobile);
+    const isReviewer = reviewLogin.reviewerMode;
 
     if (
       existingSession?.lastSentAt &&
@@ -118,7 +156,7 @@ async function handleSendOtp(req, res) {
       });
     }
 
-    const otp = isReviewer ? getReviewerOtp() : generateOtp();
+    const otp = isReviewer ? reviewLogin.otp : generateOtp();
 
     if (!isReviewer) {
       await sendOtpSms(mobile, otp);
@@ -149,6 +187,7 @@ async function handleSendOtp(req, res) {
       expiresInSeconds: OTP_TTL_MS / 1000,
       resendAfterSeconds: OTP_RESEND_COOLDOWN_MS / 1000,
       reviewerMode: isReviewer,
+      reviewRole: reviewLogin.reviewRole,
     });
   } catch (error) {
     console.log("OTP send error:", error.response?.data || error.message);
