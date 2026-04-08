@@ -18,6 +18,7 @@ const adminOnly = require("../middleware/adminMiddleware");
 const sendPushNotification = require("../utils/sendPushNotification");
 const AdminNotification = require("../models/AdminNotification");
 const EmployeeAccess = require("../models/EmployeeAccess");
+const ShowroomClosureRequest = require("../models/ShowroomClosureRequest");
 
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 
@@ -909,5 +910,74 @@ router.patch("/employees/:id/status", protect, adminOnly, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+router.get("/showroom-closure-requests", protect, adminOnly, async (req, res) => {
+  try {
+    const requests = await ShowroomClosureRequest.find()
+      .populate("showroom", "name showroomCode city phone contactPerson isActive")
+      .populate("reviewedBy", "mobile")
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json(requests);
+  } catch (error) {
+    console.log("Showroom closure request fetch error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.patch(
+  "/showroom-closure-requests/:id",
+  protect,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const status = String(req.body?.status || "").trim().toLowerCase();
+      const reviewNote = String(req.body?.reviewNote || "").trim();
+
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const request = await ShowroomClosureRequest.findById(req.params.id);
+
+      if (!request) {
+        return res.status(404).json({ message: "Closure request not found" });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({ message: "Request already reviewed" });
+      }
+
+      request.status = status;
+      request.reviewNote = reviewNote;
+      request.reviewedAt = new Date();
+      request.reviewedBy = req.user?._id || null;
+      await request.save();
+
+      if (status === "approved") {
+        await Showroom.findByIdAndUpdate(request.showroom, {
+          isActive: false,
+          expoPushToken: null,
+        });
+      }
+
+      const updatedRequest = await ShowroomClosureRequest.findById(request._id)
+        .populate("showroom", "name showroomCode city phone contactPerson isActive")
+        .populate("reviewedBy", "mobile");
+
+      res.json({
+        message:
+          status === "approved"
+            ? "Showroom closure request approved"
+            : "Showroom closure request rejected",
+        data: updatedRequest,
+      });
+    } catch (error) {
+      console.log("Showroom closure request update error", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
 
 module.exports = router;

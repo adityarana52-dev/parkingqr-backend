@@ -21,6 +21,7 @@ const {
   getMonthKey,
 } = require("../utils/commissionLedger");
 const PayoutDetails = require("../models/PayoutDetails");
+const ShowroomClosureRequest = require("../models/ShowroomClosureRequest");
 const {
   createOrUpdateWithdrawalRequest,
   getPayoutDetailsForEntity,
@@ -581,6 +582,12 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    if (!showroom.isActive) {
+      return res.status(403).json({
+        message: "Showroom account inactive. Please contact support."
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, showroom.password);
 
     if (!isMatch) {
@@ -634,6 +641,68 @@ router.put("/save-push-token", protectShowroom, async (req, res) => {
     res.json({ message: "Push token saved" });
   } catch (error) {
     console.log("Save showroom push token error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/closure-request", protectShowroom, async (req, res) => {
+  try {
+    const request = await ShowroomClosureRequest.findOne({
+      showroom: req.showroom.id,
+    })
+      .sort({ createdAt: -1 })
+      .populate("reviewedBy", "mobile");
+
+    res.json(request || null);
+  } catch (error) {
+    console.log("Fetch showroom closure request error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/closure-request", protectShowroom, async (req, res) => {
+  try {
+    const reason = String(req.body?.reason || "").trim();
+    const details = String(req.body?.details || "").trim();
+
+    if (!reason) {
+      return res.status(400).json({ message: "Closure reason required" });
+    }
+
+    const showroom = await Showroom.findById(req.showroom.id);
+
+    if (!showroom) {
+      return res.status(404).json({ message: "Showroom not found" });
+    }
+
+    const existingPendingRequest = await ShowroomClosureRequest.findOne({
+      showroom: showroom._id,
+      status: "pending",
+    });
+
+    if (existingPendingRequest) {
+      return res.status(400).json({
+        message: "A closure request is already pending for review",
+      });
+    }
+
+    const request = await ShowroomClosureRequest.create({
+      showroom: showroom._id,
+      showroomName: showroom.name || "",
+      showroomCode: showroom.showroomCode || "",
+      city: showroom.city || "",
+      contactPerson: showroom.contactPerson || "",
+      phone: showroom.phone || "",
+      reason,
+      details,
+    });
+
+    res.status(201).json({
+      message: "Closure request submitted successfully",
+      data: request,
+    });
+  } catch (error) {
+    console.log("Create showroom closure request error", error);
     res.status(500).json({ message: "Server error" });
   }
 });
