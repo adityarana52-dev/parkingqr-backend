@@ -10,6 +10,14 @@ const QrOrder = require("../models/QrOrder");
 const sendPushNotification = require("../utils/sendPushNotification");
 const QrCode = require("../models/QrCode");
 
+function adminOrEmployee(req, res, next) {
+  if (!req.user || !["admin", "employee"].includes(req.user.role)) {
+    return res.status(403).json({ message: "Admin or employee access only" });
+  }
+
+  next();
+}
+
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -306,7 +314,7 @@ const order = await QrOrder.create({
 });
 
 
-router.put("/qr-orders/:id", authMiddleware, adminMiddleware, async (req, res) => {
+router.put("/qr-orders/:id", authMiddleware, adminOrEmployee, async (req, res) => {
   try {
     const { status } = req.body;
 
@@ -409,7 +417,7 @@ router.get("/admin-stats", authMiddleware, adminMiddleware, async (req, res) => 
 // ===============================
 // 📦 ADMIN QR ORDERS LIST
 // ===============================
-router.get("/admin-orders", authMiddleware, adminMiddleware, async (req, res) => {
+router.get("/admin-orders", authMiddleware, adminOrEmployee, async (req, res) => {
 
   try {
 
