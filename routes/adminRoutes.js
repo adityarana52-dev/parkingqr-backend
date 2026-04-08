@@ -64,6 +64,14 @@ function isValidMobile(mobile) {
   return MOBILE_REGEX.test(normalizeMobile(mobile));
 }
 
+function adminOrEmployee(req, res, next) {
+  if (!req.user || !["admin", "employee"].includes(req.user.role)) {
+    return res.status(403).json({ message: "Admin or employee access only" });
+  }
+
+  next();
+}
+
 router.get("/qr-requests", async (req, res) => {
 
   try {
@@ -180,7 +188,7 @@ router.patch("/reject-request/:id", async (req, res) => {
 
 });
 
-router.get("/dashboard", async (req, res) => {
+router.get("/dashboard", protect, adminOrEmployee, async (req, res) => {
 
   try {
 
@@ -245,25 +253,25 @@ router.get("/dashboard", async (req, res) => {
       .populate("showroom", "name showroomCode")
       .select("name totalActivations totalEarnings");
 
-    res.json({
-
+    const response = {
       totalUsers,
       totalShowrooms,
       totalQrGenerated,
       totalQrActivated,
-
-      businessRevenue,
-      showroomCommission: showroomTotal,
-      salesCommission: salesTotal,
-
-      netProfit,
       pendingRequests,
       pendingWithdrawals,
-
       topShowrooms,
-      topSalesPersons
+      topSalesPersons,
+    };
 
-    });
+    if (req.user.role === "admin") {
+      response.businessRevenue = businessRevenue;
+      response.showroomCommission = showroomTotal;
+      response.salesCommission = salesTotal;
+      response.netProfit = netProfit;
+    }
+
+    res.json(response);
 
   } catch (error) {
 
@@ -277,7 +285,7 @@ router.get("/dashboard", async (req, res) => {
 
 });
 
-router.get("/withdrawals", async (req, res) => {
+router.get("/withdrawals", protect, adminOnly, async (req, res) => {
   try {
     const withdrawals = await CommissionWithdrawal.find()
       .populate("showroom", "name showroomCode")
@@ -318,7 +326,7 @@ router.get("/withdrawals", async (req, res) => {
   }
 });
 
-router.patch("/withdrawals/:id", async (req, res) => {
+router.patch("/withdrawals/:id", protect, adminOnly, async (req, res) => {
   try {
     const { status, paymentNote = "", transactionRef = "" } = req.body;
 
@@ -862,6 +870,42 @@ router.post("/employees", protect, adminOnly, async (req, res) => {
     });
   } catch (error) {
     console.log("Employee access save error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.patch("/employees/:id/status", protect, adminOnly, async (req, res) => {
+  try {
+    const isActive = Boolean(req.body?.isActive);
+
+    const employeeAccess = await EmployeeAccess.findById(req.params.id);
+
+    if (!employeeAccess) {
+      return res.status(404).json({ message: "Employee access not found" });
+    }
+
+    employeeAccess.isActive = isActive;
+    employeeAccess.addedBy = req.user?._id || employeeAccess.addedBy;
+    await employeeAccess.save();
+
+    const linkedUser = await User.findOne({ mobile: employeeAccess.mobile });
+
+    if (linkedUser && linkedUser.role !== "admin") {
+      linkedUser.role = isActive ? "employee" : "user";
+      await linkedUser.save();
+    }
+
+    const populatedEmployeeAccess = await EmployeeAccess.findById(employeeAccess._id)
+      .populate("addedBy", "mobile");
+
+    res.json({
+      message: isActive
+        ? "Employee access activated successfully"
+        : "Employee access deactivated successfully",
+      data: populatedEmployeeAccess,
+    });
+  } catch (error) {
+    console.log("Employee access status update error", error);
     res.status(500).json({ message: "Server error" });
   }
 });
