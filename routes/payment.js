@@ -23,6 +23,20 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+async function getLatestShippingLikeOrder(userId) {
+  return QrOrder.findOne({
+    user: userId,
+    status: { $in: ["processing", "shipped", "delivered"] },
+  }).sort({ createdAt: -1 });
+}
+
+async function getActiveQrForUser(userId) {
+  return QrCode.findOne({
+    assignedTo: userId,
+    qrStatus: "activated",
+  }).sort({ activatedAt: -1, createdAt: -1 });
+}
+
 
 // ✅ CREATE ORDER (Hardcoded ₹499)
 router.post("/create-order", authMiddleware, async (req, res) => {
@@ -198,6 +212,72 @@ router.post("/create-shipping-order", authMiddleware, async (req, res) => {
   }
 });
 
+router.get("/replacement-details", authMiddleware, async (req, res) => {
+  try {
+    const [user, activeQr, latestOrder] = await Promise.all([
+      User.findById(req.user._id).select("mobile"),
+      getActiveQrForUser(req.user._id),
+      getLatestShippingLikeOrder(req.user._id),
+    ]);
+
+    if (!activeQr) {
+      return res.status(404).json({
+        message: "No active QR found for replacement.",
+      });
+    }
+
+    res.json({
+      qrId: activeQr.qrId,
+      vehicleNumber: activeQr.vehicleNumber,
+      vehicleType: activeQr.vehicleType,
+      mobile: user?.mobile || "",
+      name: latestOrder?.name || "",
+      address: latestOrder?.address || "",
+      city: latestOrder?.city || "",
+      state: latestOrder?.state || "",
+      pincode: latestOrder?.pincode || "",
+    });
+  } catch (error) {
+    console.error("REPLACEMENT DETAILS ERROR:", error);
+    res.status(500).json({ message: "Failed to load replacement details" });
+  }
+});
+
+router.post("/create-replacement-order", authMiddleware, async (req, res) => {
+  try {
+    const activeQr = await getActiveQrForUser(req.user._id);
+
+    if (!activeQr) {
+      return res.status(404).json({
+        message: "No active QR found for replacement.",
+      });
+    }
+
+    const amount = 50;
+    const options = {
+      amount: amount * 100,
+      currency: "INR",
+      receipt: "replacement_" + Date.now(),
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    res.json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+      qrId: activeQr.qrId,
+      vehicleType: activeQr.vehicleType,
+    });
+  } catch (error) {
+    console.error("CREATE REPLACEMENT ORDER ERROR:", error);
+    res.status(500).json({
+      message: "Replacement order creation failed",
+    });
+  }
+});
+
 // ===============================
 // 🚚 VERIFY SHIPPING PAYMENT
 // ===============================
@@ -310,6 +390,85 @@ const order = await QrOrder.create({
   } catch (error) {
     console.error("VERIFY SHIPPING ERROR:", error);
     res.status(500).json({ message: "Shipping verification failed" });
+  }
+});
+
+router.post("/verify-replacement-order", authMiddleware, async (req, res) => {
+  try {
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+      qrId,
+      name,
+      mobile,
+      address,
+      city,
+      state,
+      pincode,
+    } = req.body;
+
+    const activeQr = await getActiveQrForUser(req.user._id);
+
+    if (!activeQr || activeQr.qrId !== String(qrId || "").trim()) {
+      return res.status(400).json({
+        message: "Active QR not found for replacement.",
+      });
+    }
+
+    if (city) {
+      await User.findByIdAndUpdate(req.user._id, { city });
+    }
+
+    const existingPayment = await Payment.findOne({ razorpay_payment_id });
+    if (existingPayment) {
+      return res.json({
+        success: true,
+        message: "Payment already processed",
+      });
+    }
+
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: "Invalid signature" });
+    }
+
+    await Payment.create({
+      userId: req.user._id,
+      razorpay_payment_id,
+      razorpay_order_id,
+      amount: 50,
+      status: "shipping-success",
+    });
+
+    const order = await QrOrder.create({
+      user: req.user._id,
+      name,
+      mobile,
+      address,
+      city,
+      state,
+      pincode,
+      paymentId: razorpay_payment_id,
+      vehicleType: activeQr.vehicleType,
+      qrId: activeQr.qrId,
+      orderType: "replacement",
+      quantity: 1,
+    });
+
+    res.json({
+      success: true,
+      orderId: order._id,
+      qrId: activeQr.qrId,
+    });
+  } catch (error) {
+    console.error("VERIFY REPLACEMENT ERROR:", error);
+    res.status(500).json({ message: "Replacement verification failed" });
   }
 });
 

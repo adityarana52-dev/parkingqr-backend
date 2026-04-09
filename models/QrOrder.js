@@ -20,6 +20,12 @@ const qrOrderSchema = new mongoose.Schema(
       default: "processing",
     },
 
+    orderType: {
+      type: String,
+      enum: ["direct", "replacement"],
+      default: "direct",
+    },
+
     vehicleType: {
   type: String,
   enum: ["car","bike","scooty","auto","other"],

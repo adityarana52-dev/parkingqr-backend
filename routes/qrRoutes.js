@@ -1039,13 +1039,33 @@ router.get("/download-order/:orderId", async (req, res) => {
 
     const { orderId } = req.params;
 
-    const [savedQrs, order] = await Promise.all([
-      QrCode.find({
+    const order = await QrOrder.findById(orderId).select(
+      "vehicleType qrId orderType"
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
+
+    let savedQrs = [];
+
+    if (order.orderType === "replacement") {
+      const replacementQr = await QrCode.findOne({
+        qrId: order.qrId,
+        qrStatus: "activated",
+      });
+
+      if (replacementQr) {
+        savedQrs = [replacementQr];
+      }
+    } else {
+      savedQrs = await QrCode.find({
         qrStatus: "assigned",
         orderId: orderId
-      }),
-      QrOrder.findById(orderId).select("vehicleType")
-    ]);
+      });
+    }
 
     if (savedQrs.length === 0) {
       return res.status(404).json({
