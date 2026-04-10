@@ -9,6 +9,7 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 const QrOrder = require("../models/QrOrder");
 const sendPushNotification = require("../utils/sendPushNotification");
 const QrCode = require("../models/QrCode");
+const REPLACEMENT_QR_REPRINT_AMOUNT = 70;
 
 function adminOrEmployee(req, res, next) {
   if (!req.user || !["admin", "employee"].includes(req.user.role)) {
@@ -253,7 +254,7 @@ router.post("/create-replacement-order", authMiddleware, async (req, res) => {
       });
     }
 
-    const amount = 50;
+    const amount = REPLACEMENT_QR_REPRINT_AMOUNT;
     const options = {
       amount: amount * 100,
       currency: "INR",
@@ -442,7 +443,7 @@ router.post("/verify-replacement-order", authMiddleware, async (req, res) => {
       userId: req.user._id,
       razorpay_payment_id,
       razorpay_order_id,
-      amount: 50,
+      amount: REPLACEMENT_QR_REPRINT_AMOUNT,
       status: "shipping-success",
     });
 
