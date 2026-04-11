@@ -164,7 +164,7 @@ router.get("/my/:qrId", protect, async (req, res) => {
       qrId,
       status: { $in: ["new", "contacted", "accepted", "rejected"] },
     })
-      .populate("showroom", "name showroomCode city")
+      .populate("showroom", "name showroomCode city phone")
       .sort({ requestedAt: -1, updatedAt: -1 })
       .limit(12);
 
@@ -535,7 +535,7 @@ router.get("/showroom/incoming", protectShowroom, async (req, res) => {
         .lean(),
       ShowroomCustomerRequest.find({
         showroom: req.showroom.id,
-        status: { $in: ["new", "contacted"] },
+        status: { $in: ["new", "contacted", "accepted", "rejected"] },
       })
         .select(
           "qrId vehicleNumber user issues requestType status preferredServiceDate requestedAt createdAt updatedAt"
@@ -562,7 +562,7 @@ router.get("/showroom/incoming", protectShowroom, async (req, res) => {
       entryType: "customer_request",
       submittedAt:
         request.requestedAt || request.updatedAt || request.createdAt,
-      actionable: false,
+      actionable: ["new", "contacted"].includes(String(request?.status || "").toLowerCase()),
       customer: {
         mobile: request.user?.mobile || null,
         city: request.user?.city || null,
