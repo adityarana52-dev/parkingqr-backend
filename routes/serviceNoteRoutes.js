@@ -159,9 +159,19 @@ router.get("/my/:qrId", protect, async (req, res) => {
       .sort({ archivedAt: -1, updatedAt: -1 })
       .limit(5);
 
+    const customerRequests = await ShowroomCustomerRequest.find({
+      user: req.user._id,
+      qrId,
+      status: { $in: ["new", "contacted", "accepted", "rejected"] },
+    })
+      .populate("showroom", "name showroomCode city")
+      .sort({ requestedAt: -1, updatedAt: -1 })
+      .limit(12);
+
     res.json({
       activeNote,
       recentNotes,
+      customerRequests,
     });
   } catch (error) {
     console.log("Get service notes error", error);
@@ -595,6 +605,79 @@ router.get("/showroom/by-qr/:qrId", protectShowroom, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+router.patch(
+  "/showroom/customer-request/:requestId",
+  protectShowroom,
+  async (req, res) => {
+    try {
+      const { requestId } = req.params;
+      const nextStatus = String(req.body?.status || "")
+        .trim()
+        .toLowerCase();
+
+      if (!["accepted", "rejected"].includes(nextStatus)) {
+        return res.status(400).json({ message: "Invalid request status" });
+      }
+
+      const customerRequest = await ShowroomCustomerRequest.findOne({
+        _id: requestId,
+        showroom: req.showroom.id,
+        status: { $in: ["new", "contacted"] },
+      })
+        .populate("user", "mobile expoPushToken")
+        .populate("showroom", "name showroomCode city");
+
+      if (!customerRequest) {
+        return res.status(404).json({ message: "Customer request not found" });
+      }
+
+      customerRequest.status = nextStatus;
+      await customerRequest.save();
+
+      const requestLabel =
+        customerRequest.requestType === "insurance_quote"
+          ? "insurance quote request"
+          : "service booking request";
+
+      if (customerRequest.user?.expoPushToken) {
+        await sendPushNotification(
+          customerRequest.user.expoPushToken,
+          nextStatus === "accepted"
+            ? "Showroom Accepted Your Request"
+            : "Showroom Rejected Your Request",
+          nextStatus === "accepted"
+            ? `${
+                customerRequest.showroom?.name || "A showroom"
+              } accepted your ${requestLabel}.`
+            : `${
+                customerRequest.showroom?.name || "A showroom"
+              } rejected your ${requestLabel}.`,
+          {
+            type:
+              customerRequest.requestType === "insurance_quote"
+                ? "SHOWROOM_INSURANCE_QUOTE_STATUS"
+                : "SHOWROOM_SERVICE_BOOKING_STATUS",
+            qrId: customerRequest.qrId,
+            requestId: customerRequest._id?.toString(),
+            status: nextStatus,
+          }
+        );
+      }
+
+      res.json({
+        message:
+          nextStatus === "accepted"
+            ? "Customer request accepted"
+            : "Customer request rejected",
+        data: customerRequest,
+      });
+    } catch (error) {
+      console.log("Update showroom customer request error", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
 
 router.post("/showroom/start/:noteId", protectShowroom, async (req, res) => {
   try {

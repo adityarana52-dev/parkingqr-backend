@@ -56,7 +56,7 @@ const showroomCustomerRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["new", "contacted", "closed"],
+      enum: ["new", "contacted", "accepted", "rejected", "closed"],
       default: "new",
       index: true,
     },
