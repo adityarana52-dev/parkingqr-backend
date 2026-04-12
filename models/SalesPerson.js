@@ -26,7 +26,7 @@ const salesPersonSchema = new mongoose.Schema(
 
     commissionValue: {
       type: Number,
-      default: 8.36
+      default: 16.72
     },
 
     totalEarnings: {
