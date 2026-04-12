@@ -195,7 +195,7 @@ app.get("/scan/:qrId", async (req, res) => {
   <div class="container">
     <div class="card">
       <div class="brand">
-        <img src="${BRAND_LOGO_DATA_URI}" alt="carbiQR" class="brand-logo" />
+        
         <div class="brand-name">CarbiQR</div>
         <div class="brand-subtitle">Vehicle Assistance</div>
       </div>
