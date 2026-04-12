@@ -420,7 +420,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
         for (let copy = 0; copy < 2; copy++) {
 
           // TEMPLATE (same as before)
-          doc.image(templatePath, x, y - 40, {
+          doc.image(templatePath, x, y - 44, {
             width: cardWidth,
           });
 
