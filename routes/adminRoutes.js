@@ -19,6 +19,7 @@ const sendPushNotification = require("../utils/sendPushNotification");
 const AdminNotification = require("../models/AdminNotification");
 const EmployeeAccess = require("../models/EmployeeAccess");
 const ShowroomClosureRequest = require("../models/ShowroomClosureRequest");
+const { normalizeStateCode } = require("../utils/stateCodeMap");
 
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 
@@ -427,7 +428,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
           // QR (same as before)
           const qrSize = 120;
           const qrX = x + (cardWidth - qrSize) / 2;
-          const qrY = y + 30;
+          const qrY = y + 25;
 
           doc.image(qrBuffer, qrX, qrY, {
             width: qrSize,
@@ -552,8 +553,13 @@ router.post("/convert-lead/:id", async (req, res) => {
       });
     }
 
-    // generate showroom code
-    const upperStateCode = lead.stateCode.toUpperCase();
+    const upperStateCode = normalizeStateCode(lead.stateCode);
+
+    if (!upperStateCode) {
+      return res.status(400).json({
+        message: "Lead has invalid state value. Please update the lead state first.",
+      });
+    }
 
     const counter = await StateCounter.findOneAndUpdate(
       { stateCode: upperStateCode },
@@ -578,7 +584,7 @@ router.post("/convert-lead/:id", async (req, res) => {
 
       name: lead.name,
       city: lead.city,
-      stateCode: lead.stateCode,
+      stateCode: upperStateCode,
       showroomCode,
 
       contactPerson: lead.contactPerson,

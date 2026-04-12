@@ -22,6 +22,7 @@ const {
 } = require("../utils/commissionLedger");
 const PayoutDetails = require("../models/PayoutDetails");
 const ShowroomClosureRequest = require("../models/ShowroomClosureRequest");
+const { normalizeStateCode } = require("../utils/stateCodeMap");
 const {
   createOrUpdateWithdrawalRequest,
   getPayoutDetailsForEntity,
@@ -86,7 +87,13 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    const upperStateCode = stateCode.toUpperCase();
+    const upperStateCode = normalizeStateCode(stateCode);
+
+    if (!upperStateCode) {
+      return res.status(400).json({
+        message: "Valid state code required"
+      });
+    }
 
     // 🔥 Generate showroomCode using StateCounter
     const counter = await StateCounter.findOneAndUpdate(

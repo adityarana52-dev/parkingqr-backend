@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ShowroomLead = require("../models/ShowroomLead");
+const { normalizeStateCode } = require("../utils/stateCodeMap");
 
 
 // showroom request connection
@@ -8,7 +9,16 @@ router.post("/request", async (req,res)=>{
 
 try{
 
-const lead = await ShowroomLead.create(req.body);
+const normalizedStateCode = normalizeStateCode(req.body?.stateCode);
+
+if(!normalizedStateCode){
+return res.status(400).json({message:"Valid state selection required"});
+}
+
+const lead = await ShowroomLead.create({
+...req.body,
+stateCode: normalizedStateCode
+});
 
 res.json({
 message:"Connection request sent successfully"
