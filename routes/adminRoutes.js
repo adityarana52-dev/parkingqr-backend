@@ -420,14 +420,14 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
         for (let copy = 0; copy < 2; copy++) {
 
           // TEMPLATE (same as before)
-          doc.image(templatePath, x, y - 60, {
+          doc.image(templatePath, x, y - 56, {
             width: cardWidth,
           });
 
           // QR (same as before)
           const qrSize = 120;
           const qrX = x + (cardWidth - qrSize) / 2;
-          const qrY = y + 30;
+          const qrY = y + 36;
 
           doc.image(qrBuffer, qrX, qrY, {
             width: qrSize,
