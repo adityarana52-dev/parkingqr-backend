@@ -19,6 +19,8 @@ const sendPushNotification = require("../utils/sendPushNotification");
 const AdminNotification = require("../models/AdminNotification");
 const EmployeeAccess = require("../models/EmployeeAccess");
 const ShowroomClosureRequest = require("../models/ShowroomClosureRequest");
+const QrOrder = require("../models/QrOrder");
+const Support = require("../models/Support");
 const { normalizeStateCode } = require("../utils/stateCodeMap");
 
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
@@ -197,6 +199,18 @@ router.get("/dashboard", protect, adminOrEmployee, async (req, res) => {
     const pendingRequests = await QrRequest.countDocuments({
     status: "pending"
     });
+    const pendingOrders = await QrOrder.countDocuments({
+      status: "processing"
+    });
+    const pendingBusinessLeads = await ShowroomLead.countDocuments({
+      status: "pending"
+    });
+    const openSupportTickets = await Support.countDocuments({
+      status: "open"
+    });
+    const pendingClosureRequests = await ShowroomClosureRequest.countDocuments({
+      status: "pending"
+    });
     const pendingWithdrawals = await CommissionWithdrawal.countDocuments({
       status: "pending"
     });
@@ -261,6 +275,10 @@ router.get("/dashboard", protect, adminOrEmployee, async (req, res) => {
       totalQrGenerated,
       totalQrActivated,
       pendingRequests,
+      pendingOrders,
+      pendingBusinessLeads,
+      openSupportTickets,
+      pendingClosureRequests,
       pendingWithdrawals,
       topShowrooms,
       topSalesPersons,
@@ -661,10 +679,6 @@ router.patch("/support/:id", async (req,res)=>{
   await Support.findByIdAndUpdate(req.params.id,{ status:"resolved" });
   res.json({message:"updated"});
 });
-
-
-const Support = require("../models/Support");
-
 router.get("/support", async (req,res)=>{
 try{
 

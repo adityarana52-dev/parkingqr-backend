@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ShowroomLead = require("../models/ShowroomLead");
 const { normalizeStateCode } = require("../utils/stateCodeMap");
+const notifyAdmins = require("../utils/notifyAdmins");
 
 function normalizeText(value = "") {
   return String(value || "").trim();
@@ -30,6 +31,15 @@ phone: normalizeText(req.body?.phone),
 pincode: normalizeText(req.body?.pincode),
 stateCode: normalizedStateCode
 });
+
+await notifyAdmins(
+  "New Business Lead",
+  `${lead.name} submitted a new showroom connection request.`,
+  {
+    category: "business_lead",
+    leadId: lead._id.toString(),
+  }
+);
 
 res.json({
 message:"Connection request sent successfully"

@@ -9,6 +9,7 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 const QrOrder = require("../models/QrOrder");
 const sendPushNotification = require("../utils/sendPushNotification");
 const QrCode = require("../models/QrCode");
+const notifyAdmins = require("../utils/notifyAdmins");
 const REPLACEMENT_QR_REPRINT_AMOUNT = 70;
 
 function adminOrEmployee(req, res, next) {
@@ -359,6 +360,15 @@ const order = await QrOrder.create({
   vehicleType
 });
 
+await notifyAdmins(
+  "New QR Order",
+  `A new ${vehicleType || "vehicle"} QR order is waiting for admin processing.`,
+  {
+    category: "direct_order",
+    orderId: order._id.toString(),
+  }
+);
+
       // find unused direct QR
       const qr = await QrCode.findOne({
         sourceType: "direct",
@@ -461,6 +471,16 @@ router.post("/verify-replacement-order", authMiddleware, async (req, res) => {
       orderType: "replacement",
       quantity: 1,
     });
+
+    await notifyAdmins(
+      "QR Reprint Order",
+      "A damaged QR reprint request is waiting for admin processing.",
+      {
+        category: "replacement_order",
+        orderId: order._id.toString(),
+        qrId: activeQr.qrId,
+      }
+    );
 
     res.json({
       success: true,

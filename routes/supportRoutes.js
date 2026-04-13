@@ -4,6 +4,7 @@ const router = express.Router();
 const Support = require("../models/Support");
 const protect = require("../middleware/authMiddleware");
 const protectShowroom = require("../middleware/showroomAuthMiddleware");
+const notifyAdmins = require("../utils/notifyAdmins");
 
 
 // ✅ SEND MESSAGE
@@ -101,6 +102,17 @@ router.post("/", async (req, res) => {
 
       await support.save();
     }
+
+    await notifyAdmins(
+      "New Support Message",
+      senderType === "showroom"
+        ? "A showroom has sent a new support message."
+        : "A user has sent a new support message.",
+      {
+        category: "support",
+        supportId: support._id.toString(),
+      }
+    );
 
     res.json(support);
 

@@ -24,6 +24,7 @@ const {
 const PayoutDetails = require("../models/PayoutDetails");
 const ShowroomClosureRequest = require("../models/ShowroomClosureRequest");
 const ShowroomPasswordOtp = require("../models/ShowroomPasswordOtp");
+const notifyAdmins = require("../utils/notifyAdmins");
 const { normalizeStateCode } = require("../utils/stateCodeMap");
 const {
   createOrUpdateWithdrawalRequest,
@@ -930,6 +931,16 @@ router.post("/closure-request", protectShowroom, async (req, res) => {
       reason,
       details,
     });
+
+    await notifyAdmins(
+      "Showroom Closure Request",
+      `${showroom.name || "A showroom"} submitted a closure request for review.`,
+      {
+        category: "showroom_closure",
+        requestId: request._id.toString(),
+        showroomId: showroom._id.toString(),
+      }
+    );
 
     res.status(201).json({
       message: "Closure request submitted successfully",
