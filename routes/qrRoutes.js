@@ -37,6 +37,34 @@ function wantsJsonResponse(req) {
   return req.is("application/json") || req.get("accept")?.includes("application/json");
 }
 
+const NEW_UNIT_SERVICE_TYPES = [
+  "first_service",
+  "second_service",
+  "third_service",
+  "regular_service",
+];
+
+function getServiceDisplayLabel(serviceType, serviceNumber) {
+  switch (String(serviceType || "").toLowerCase()) {
+    case "first_service":
+      return "First Scheduled Service";
+    case "second_service":
+      return "Second Scheduled Service";
+    case "third_service":
+      return "Third Scheduled Service";
+    case "regular_service":
+      return serviceNumber ? `Scheduled Service #${serviceNumber}` : "Scheduled Service";
+    case "paid":
+      return "Paid Service";
+    case "free":
+      return "Free Service";
+    case "checkup":
+      return "General Checkup";
+    default:
+      return serviceNumber ? `Service #${serviceNumber}` : "Service";
+  }
+}
+
 // ✅ Get QR Details (Showroom + Salespersons)
 
 router.get("/details/:qrId", async (req,res)=>{
@@ -1258,8 +1286,10 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       });
     }
 
-    // 🔥 AUTO SERVICE COUNT
-    const totalServices = await ServiceHistory.countDocuments({ qrId });
+    const milestoneServiceCount = await ServiceHistory.countDocuments({
+      qrId,
+      serviceType: { $in: NEW_UNIT_SERVICE_TYPES },
+    });
 
       let serviceType = "";
       let serviceNumber = null;
@@ -1270,12 +1300,12 @@ router.post("/add-service", protectShowroom, async (req, res) => {
         serviceNumber = null;
       } else {
         // 🟢 NEW VEHICLE
-        if (totalServices === 0) serviceType = "first_service";
-        else if (totalServices === 1) serviceType = "second_service";
-        else if (totalServices === 2) serviceType = "third_service";
+        if (milestoneServiceCount === 0) serviceType = "first_service";
+        else if (milestoneServiceCount === 1) serviceType = "second_service";
+        else if (milestoneServiceCount === 2) serviceType = "third_service";
         else serviceType = "regular_service";
 
-        serviceNumber = totalServices + 1;
+        serviceNumber = milestoneServiceCount + 1;
       }
 
     // 🔥 CREATE SERVICE
@@ -1284,8 +1314,6 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       qrId: qr.qrId,
       user: qr.assignedTo,
       showroom: req.showroomData?._id || null, // 👈 SAFE
-       serviceType,        // 👈 dynamic
-       serviceNumber,      // 👈 null for old vehicle  
       serviceType,
       serviceNumber,
       amount,
@@ -1297,10 +1325,14 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       const user = await User.findById(qr.assignedTo);
 
       if (user?.expoPushToken) {
+        const serviceLabel = getServiceDisplayLabel(
+          service.serviceType,
+          service.serviceNumber
+        );
         await sendPushNotification(
           user.expoPushToken,
-          "🚗 Service Updated",
-          `Service #${service.serviceNumber} added`,
+          "Service Record Updated",
+          `${serviceLabel} has been added to your vehicle history.`,
           {
             type: "SERVICE_UPDATE",
             qrId: qr.qrId
@@ -1330,10 +1362,14 @@ router.post("/add-service", protectShowroom, async (req, res) => {
       });
 
       if (serviceNote) {
+        const serviceLabel = getServiceDisplayLabel(
+          service.serviceType,
+          service.serviceNumber
+        );
         serviceNote.status = "archived";
         serviceNote.archivedAt = new Date();
         serviceNote.linkedService = service._id;
-        serviceNote.resolutionSummary = `Closed with service entry ${service.serviceNumber || "manual"}.`;
+        serviceNote.resolutionSummary = `Closed with ${serviceLabel}.`;
         await serviceNote.save();
       }
     }
