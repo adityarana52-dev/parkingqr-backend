@@ -188,22 +188,24 @@ router.get("/offers", async (req, res) => {
     );
     const brandKeys = brands.map((item) => item.toLowerCase());
 
-    if (!cityKey) {
-      return res.status(400).json({ message: "City is required" });
-    }
-
-    if (!VEHICLE_TYPES.has(vehicleType)) {
-      return res.status(400).json({ message: "Valid vehicle type required" });
-    }
-
     const last30Days = new Date();
     last30Days.setDate(last30Days.getDate() - 30);
 
     const showroomFilter = {
-      city: new RegExp(`^${escapeRegex(cityKey)}$`, "i"),
-      vehicleType,
       ...isActiveShowroomFilter(),
     };
+
+    if (cityKey) {
+      showroomFilter.city = new RegExp(`^${escapeRegex(cityKey)}$`, "i");
+    }
+
+    if (vehicleType) {
+      if (!VEHICLE_TYPES.has(vehicleType)) {
+        return res.status(400).json({ message: "Valid vehicle type required" });
+      }
+
+      showroomFilter.vehicleType = vehicleType;
+    }
 
     if (brandKeys.length) {
       showroomFilter.vehicleBrandKeys = { $in: brandKeys };
