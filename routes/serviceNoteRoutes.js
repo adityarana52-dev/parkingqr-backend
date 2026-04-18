@@ -60,6 +60,10 @@ function normalizeRequestType(requestType) {
   return null;
 }
 
+function normalizeMobile(value = "") {
+  return String(value || "").replace(/\D/g, "").trim();
+}
+
 function formatRequestDate(date) {
   if (!date) {
     return null;
@@ -130,6 +134,14 @@ async function notifyShowroom(showroom, title, body, data = {}) {
   }
 
   await sendPushNotification(showroom.expoPushToken, title, body, data);
+}
+
+async function notifyUser(user, title, body, data = {}) {
+  if (!user?.expoPushToken) {
+    return;
+  }
+
+  await sendPushNotification(user.expoPushToken, title, body, data);
 }
 
 router.get("/my/:qrId", protect, async (req, res) => {
@@ -538,7 +550,7 @@ router.get("/showroom/incoming", protectShowroom, async (req, res) => {
         status: { $in: ["new", "contacted", "accepted", "rejected"] },
       })
         .select(
-          "qrId vehicleNumber user issues requestType status preferredServiceDate requestedAt createdAt updatedAt"
+          "qrId vehicleNumber user issues requestType status preferredServiceDate requestedAt createdAt updatedAt pickupTracking"
         )
         .populate("user", "mobile city")
         .sort({ requestedAt: -1, updatedAt: -1 })
@@ -567,6 +579,7 @@ router.get("/showroom/incoming", protectShowroom, async (req, res) => {
         mobile: request.user?.mobile || null,
         city: request.user?.city || null,
       },
+      pickupTracking: request.pickupTracking || null,
     }));
 
     const mergedItems = [...mappedRequests, ...mappedNotes].sort((a, b) => {
@@ -674,6 +687,149 @@ router.patch(
       });
     } catch (error) {
       console.log("Update showroom customer request error", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+router.patch(
+  "/showroom/customer-request/:requestId/pick-drop",
+  protectShowroom,
+  async (req, res) => {
+    try {
+      const { requestId } = req.params;
+      const action = String(req.body?.action || "").trim().toLowerCase();
+      const driverName = String(req.body?.driverName || "").trim();
+      const driverMobile = normalizeMobile(req.body?.driverMobile);
+      const scannedQrId = String(req.body?.scannedQrId || "").trim();
+      const latitude =
+        req.body?.latitude !== undefined && req.body?.latitude !== null
+          ? Number(req.body.latitude)
+          : null;
+      const longitude =
+        req.body?.longitude !== undefined && req.body?.longitude !== null
+          ? Number(req.body.longitude)
+          : null;
+      const accuracy =
+        req.body?.accuracy !== undefined && req.body?.accuracy !== null
+          ? Number(req.body.accuracy)
+          : null;
+
+      const customerRequest = await ShowroomCustomerRequest.findOne({
+        _id: requestId,
+        showroom: req.showroom.id,
+        requestType: "service_booking",
+        status: "accepted",
+      })
+        .populate("user", "expoPushToken mobile")
+        .populate("showroom", "name showroomCode city");
+
+      if (!customerRequest) {
+        return res.status(404).json({ message: "Accepted service request not found" });
+      }
+
+      const nextTracking = {
+        ...(customerRequest.pickupTracking?.toObject?.() || customerRequest.pickupTracking || {}),
+      };
+      const now = new Date();
+      let pushTitle = "";
+      let pushBody = "";
+      let successMessage = "";
+      const currentStage = String(nextTracking.currentStage || "not_started").toLowerCase();
+      const allowedTransitions = {
+        pickup_assigned: ["not_started"],
+        vehicle_picked: ["pickup_assigned"],
+        reached_service_center: ["vehicle_picked"],
+        service_in_progress: ["reached_service_center"],
+        service_completed: ["service_in_progress"],
+      };
+
+      if (!allowedTransitions[action]?.includes(currentStage)) {
+        return res.status(400).json({
+          message: "Complete the previous step first",
+        });
+      }
+
+      if (action === "pickup_assigned") {
+        if (!driverName || driverMobile.length !== 10) {
+          return res.status(400).json({
+            message: "Driver name and valid mobile number are required",
+          });
+        }
+
+        nextTracking.driverName = driverName;
+        nextTracking.driverMobile = driverMobile;
+        nextTracking.currentStage = "pickup_assigned";
+        nextTracking.pickupAssignedAt = now;
+        pushTitle = "Pickup Assigned";
+        pushBody = `${
+          customerRequest.showroom?.name || "Your showroom"
+        } assigned pickup for your vehicle.`;
+        successMessage = "Pickup assigned successfully";
+      } else if (action === "vehicle_picked") {
+        nextTracking.currentStage = "vehicle_picked";
+        nextTracking.vehiclePickedAt = now;
+        pushTitle = "Vehicle Picked";
+        pushBody = `${
+          customerRequest.showroom?.name || "Your showroom"
+        } marked your vehicle as picked.`;
+        successMessage = "Vehicle marked as picked";
+      } else if (action === "reached_service_center") {
+        if (!scannedQrId || scannedQrId !== customerRequest.qrId) {
+          return res.status(400).json({
+            message: "Scan the correct vehicle QR to continue",
+          });
+        }
+
+        nextTracking.currentStage = "reached_service_center";
+        nextTracking.reachedServiceCenterAt = now;
+        nextTracking.reachedServiceCenterScan = {
+          latitude: Number.isFinite(latitude) ? latitude : null,
+          longitude: Number.isFinite(longitude) ? longitude : null,
+          accuracy: Number.isFinite(accuracy) ? accuracy : null,
+          scannedAt: now,
+        };
+        pushTitle = "Reached Service Center";
+        pushBody = `${
+          customerRequest.showroom?.name || "Your showroom"
+        } confirmed your vehicle reached the service center.`;
+        successMessage = "Reached service center confirmed";
+      } else if (action === "service_in_progress") {
+        nextTracking.currentStage = "service_in_progress";
+        nextTracking.serviceInProgressAt = now;
+        pushTitle = "Service In Progress";
+        pushBody = `${
+          customerRequest.showroom?.name || "Your showroom"
+        } started working on your vehicle.`;
+        successMessage = "Service marked in progress";
+      } else if (action === "service_completed") {
+        nextTracking.currentStage = "service_completed";
+        nextTracking.serviceCompletedAt = now;
+        pushTitle = "Service Completed";
+        pushBody = `${
+          customerRequest.showroom?.name || "Your showroom"
+        } completed your vehicle service.`;
+        successMessage = "Service marked completed";
+      } else {
+        return res.status(400).json({ message: "Invalid tracking action" });
+      }
+
+      customerRequest.pickupTracking = nextTracking;
+      await customerRequest.save();
+
+      await notifyUser(customerRequest.user, pushTitle, pushBody, {
+        type: "SHOWROOM_PICKDROP_STATUS",
+        requestId: customerRequest._id?.toString(),
+        qrId: customerRequest.qrId,
+        stage: nextTracking.currentStage,
+      });
+
+      res.json({
+        message: successMessage,
+        data: customerRequest,
+      });
+    } catch (error) {
+      console.log("Update customer request pick-drop error", error);
       res.status(500).json({ message: "Server error" });
     }
   }

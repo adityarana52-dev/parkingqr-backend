@@ -12,6 +12,72 @@ const customerRequestIssueSchema = new mongoose.Schema(
   { _id: true }
 );
 
+const pickupTrackingSchema = new mongoose.Schema(
+  {
+    driverName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    driverMobile: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    currentStage: {
+      type: String,
+      enum: [
+        "not_started",
+        "pickup_assigned",
+        "vehicle_picked",
+        "reached_service_center",
+        "service_in_progress",
+        "service_completed",
+      ],
+      default: "not_started",
+    },
+    pickupAssignedAt: {
+      type: Date,
+      default: null,
+    },
+    vehiclePickedAt: {
+      type: Date,
+      default: null,
+    },
+    reachedServiceCenterAt: {
+      type: Date,
+      default: null,
+    },
+    serviceInProgressAt: {
+      type: Date,
+      default: null,
+    },
+    serviceCompletedAt: {
+      type: Date,
+      default: null,
+    },
+    reachedServiceCenterScan: {
+      latitude: {
+        type: Number,
+        default: null,
+      },
+      longitude: {
+        type: Number,
+        default: null,
+      },
+      accuracy: {
+        type: Number,
+        default: null,
+      },
+      scannedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+  },
+  { _id: false }
+);
+
 const showroomCustomerRequestSchema = new mongoose.Schema(
   {
     qr: {
@@ -63,6 +129,10 @@ const showroomCustomerRequestSchema = new mongoose.Schema(
     requestedAt: {
       type: Date,
       default: Date.now,
+    },
+    pickupTracking: {
+      type: pickupTrackingSchema,
+      default: () => ({}),
     },
   },
   { timestamps: true }
