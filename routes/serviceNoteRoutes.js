@@ -64,6 +64,14 @@ function normalizeMobile(value = "") {
   return String(value || "").replace(/\D/g, "").trim();
 }
 
+function hasValidCoordinates(latitude, longitude) {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    !(Math.abs(latitude) < 0.00001 && Math.abs(longitude) < 0.00001)
+  );
+}
+
 function formatRequestDate(date) {
   if (!date) {
     return null;
@@ -781,11 +789,17 @@ router.patch(
           });
         }
 
+        if (!hasValidCoordinates(latitude, longitude)) {
+          return res.status(400).json({
+            message: "Valid current location is required to confirm service center arrival",
+          });
+        }
+
         nextTracking.currentStage = "reached_service_center";
         nextTracking.reachedServiceCenterAt = now;
         nextTracking.reachedServiceCenterScan = {
-          latitude: Number.isFinite(latitude) ? latitude : null,
-          longitude: Number.isFinite(longitude) ? longitude : null,
+          latitude,
+          longitude,
           accuracy: Number.isFinite(accuracy) ? accuracy : null,
           scannedAt: now,
         };
