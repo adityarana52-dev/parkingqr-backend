@@ -3,6 +3,7 @@ const express = require("express");
 const CustomerLead = require("../models/CustomerLead");
 const Showroom = require("../models/Showroom");
 const OfferLog = require("../models/OfferLog");
+const ShowroomNotification = require("../models/ShowroomNotification");
 const protectShowroom = require("../middleware/showroomAuthMiddleware");
 const sendPushNotification = require("../utils/sendPushNotification");
 
@@ -55,15 +56,26 @@ function isActiveShowroomFilter() {
 async function notifyMatchedShowrooms(showrooms, lead) {
   await Promise.all(
     showrooms.map(async (showroom) => {
-      if (!showroom?.expoPushToken) {
-        return;
-      }
-
       try {
-        await sendPushNotification(
+        const message = `${
+          String(lead.vehicleType || "").toUpperCase()
+        } lead received from ${lead.city} for ${Array.isArray(lead.brands) ? lead.brands.join(", ") : "selected brand"} (${lead.mobile}).`;
+
+        await ShowroomNotification.create({
+          showroom: showroom._id,
+          message,
+          month: new Date().getMonth() + 1,
+          year: new Date().getFullYear(),
+        });
+
+        if (!showroom?.expoPushToken) {
+          return;
+        }
+
+        const pushResult = await sendPushNotification(
           showroom.expoPushToken,
           "New Customer Lead",
-          `${lead.vehicleType.toUpperCase()} lead received from ${lead.city}.`,
+          message,
           {
             type: "SHOWROOM_CUSTOMER_LEAD",
             leadGroupId: lead.leadGroupId,
@@ -71,8 +83,16 @@ async function notifyMatchedShowrooms(showrooms, lead) {
             city: lead.city,
             brands: lead.brands,
             mobile: lead.mobile,
+            showroomId: showroom._id?.toString?.() || null,
           }
         );
+
+        if (!pushResult?.ok) {
+          console.log("Customer lead push not confirmed:", {
+            showroomId: showroom._id?.toString?.(),
+            result: pushResult,
+          });
+        }
       } catch (error) {
         console.log("Notify showroom customer lead error", error);
       }
