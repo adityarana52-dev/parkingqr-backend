@@ -8,6 +8,27 @@ function normalizeText(value = "") {
   return String(value || "").trim();
 }
 
+function normalizeBrandList(brands = []) {
+  const values = Array.isArray(brands) ? brands : [brands];
+  const seen = new Set();
+
+  return values
+    .map((item) => normalizeText(item))
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeBrandKeys(brands = []) {
+  return normalizeBrandList(brands).map((item) => item.toLowerCase());
+}
+
 
 // showroom request connection
 router.post("/request", async (req,res)=>{
@@ -15,6 +36,8 @@ router.post("/request", async (req,res)=>{
 try{
 
 const normalizedStateCode = normalizeStateCode(req.body?.stateCode);
+const vehicleBrands = normalizeBrandList(req.body?.vehicleBrands);
+const vehicleBrandKeys = normalizeBrandKeys(req.body?.vehicleBrands);
 
 if(!normalizedStateCode){
 return res.status(400).json({message:"Valid state selection required"});
@@ -29,7 +52,9 @@ addressLine1: normalizeText(req.body?.addressLine1),
 addressLine2: normalizeText(req.body?.addressLine2),
 phone: normalizeText(req.body?.phone),
 pincode: normalizeText(req.body?.pincode),
-stateCode: normalizedStateCode
+stateCode: normalizedStateCode,
+vehicleBrands,
+vehicleBrandKeys
 });
 
 await notifyAdmins(

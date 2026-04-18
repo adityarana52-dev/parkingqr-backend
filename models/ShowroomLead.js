@@ -28,6 +28,16 @@ required:true
       
     },
 
+vehicleBrands:{
+type:[String],
+default:[]
+},
+
+vehicleBrandKeys:{
+type:[String],
+default:[]
+},
+
 stateCode:{
 type:String,
 required:true

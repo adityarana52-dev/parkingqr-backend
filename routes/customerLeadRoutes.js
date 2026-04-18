@@ -27,6 +27,23 @@ function normalizeCity(value = "") {
   return normalizeText(value).toLowerCase();
 }
 
+function normalizeBrandList(brands = []) {
+  const values = Array.isArray(brands) ? brands : [brands];
+  const seen = new Set();
+
+  return values
+    .map((item) => normalizeText(item))
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
 function escapeRegex(value = "") {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -52,7 +69,7 @@ async function notifyMatchedShowrooms(showrooms, lead) {
             leadGroupId: lead.leadGroupId,
             vehicleType: lead.vehicleType,
             city: lead.city,
-            brand: lead.brand,
+            brands: lead.brands,
             mobile: lead.mobile,
           }
         );
@@ -67,7 +84,8 @@ router.post("/", async (req, res) => {
   try {
     const mobile = normalizeMobile(req.body?.mobile);
     const vehicleType = normalizeVehicleType(req.body?.vehicleType);
-    const brand = normalizeText(req.body?.brand);
+    const brands = normalizeBrandList(req.body?.brands || req.body?.brand);
+    const brandKeys = brands.map((item) => item.toLowerCase());
     const city = normalizeText(req.body?.city);
     const cityKey = normalizeCity(req.body?.city);
 
@@ -79,8 +97,8 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ message: "Valid vehicle type required" });
     }
 
-    if (!brand) {
-      return res.status(400).json({ message: "Brand is required" });
+    if (!brands.length) {
+      return res.status(400).json({ message: "Select at least one brand" });
     }
 
     if (!cityKey) {
@@ -88,18 +106,27 @@ router.post("/", async (req, res) => {
     }
 
     const leadGroupId = crypto.randomUUID();
-    const showrooms = await Showroom.find({
+    const showroomFilter = {
       city: new RegExp(`^${escapeRegex(cityKey)}$`, "i"),
       vehicleType,
       ...isActiveShowroomFilter(),
-    }).select("_id name city vehicleType expoPushToken");
+    };
+
+    if (brandKeys.length) {
+      showroomFilter.vehicleBrandKeys = { $in: brandKeys };
+    }
+
+    const showrooms = await Showroom.find(showroomFilter).select(
+      "_id name city vehicleType expoPushToken vehicleBrandKeys"
+    );
 
     if (!showrooms.length) {
       const unassignedLead = await CustomerLead.create({
         leadGroupId,
         mobile,
         vehicleType,
-        brand,
+        brands,
+        brandKeys,
         city,
         cityKey,
         showroom: null,
@@ -119,7 +146,8 @@ router.post("/", async (req, res) => {
       showroom: showroom._id,
       mobile,
       vehicleType,
-      brand,
+      brands,
+      brandKeys,
       city,
       cityKey,
       status: "new",
@@ -131,7 +159,7 @@ router.post("/", async (req, res) => {
       leadGroupId,
       mobile,
       vehicleType,
-      brand,
+      brands,
       city,
     });
 
@@ -151,6 +179,14 @@ router.get("/offers", async (req, res) => {
     const city = normalizeText(req.query?.city);
     const cityKey = normalizeCity(req.query?.city);
     const vehicleType = normalizeVehicleType(req.query?.vehicleType);
+    const brands = normalizeBrandList(
+      req.query?.brands
+        ? String(req.query.brands)
+            .split(",")
+            .map((item) => item.trim())
+        : []
+    );
+    const brandKeys = brands.map((item) => item.toLowerCase());
 
     if (!cityKey) {
       return res.status(400).json({ message: "City is required" });
@@ -163,11 +199,17 @@ router.get("/offers", async (req, res) => {
     const last30Days = new Date();
     last30Days.setDate(last30Days.getDate() - 30);
 
-    const showrooms = await Showroom.find({
+    const showroomFilter = {
       city: new RegExp(`^${escapeRegex(cityKey)}$`, "i"),
       vehicleType,
       ...isActiveShowroomFilter(),
-    }).select("_id");
+    };
+
+    if (brandKeys.length) {
+      showroomFilter.vehicleBrandKeys = { $in: brandKeys };
+    }
+
+    const showrooms = await Showroom.find(showroomFilter).select("_id");
 
     const showroomIds = showrooms.map((item) => item._id);
     if (!showroomIds.length) {
@@ -194,7 +236,7 @@ router.get("/showroom", protectShowroom, async (req, res) => {
       showroom: req.showroom.id,
     })
       .select(
-        "leadGroupId mobile vehicleType brand city status matchedShowroomCount createdAt updatedAt"
+        "leadGroupId mobile vehicleType brands city status matchedShowroomCount createdAt updatedAt"
       )
       .sort({ createdAt: -1 })
       .lean();

@@ -52,6 +52,27 @@ function normalizeMobile(mobile) {
   return String(mobile || "").trim();
 }
 
+function normalizeText(value = "") {
+  return String(value || "").trim();
+}
+
+function normalizeBrandList(brands = []) {
+  const values = Array.isArray(brands) ? brands : [brands];
+  const seen = new Set();
+
+  return values
+    .map((item) => normalizeText(item))
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
 function isValidMobile(mobile) {
   return MOBILE_REGEX.test(normalizeMobile(mobile));
 }
@@ -156,7 +177,8 @@ router.post("/create", async (req, res) => {
         contactPerson,
         username,
         password,
-        vehicleType
+        vehicleType,
+        vehicleBrands = []
         } = req.body;
 
     if (!name || !city || !stateCode || !username || !password) {
@@ -188,6 +210,7 @@ router.post("/create", async (req, res) => {
 
     // 🔐 Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+    const normalizedVehicleBrands = normalizeBrandList(vehicleBrands);
 
     const showroom = await Showroom.create({
           name,
@@ -206,7 +229,9 @@ router.post("/create", async (req, res) => {
           username,
           password: hashedPassword,
 
-          vehicleType //Add this
+          vehicleType, //Add this
+          vehicleBrands: normalizedVehicleBrands,
+          vehicleBrandKeys: normalizedVehicleBrands.map((item) => item.toLowerCase())
         });
 
     res.status(201).json(showroom);

@@ -55,15 +55,25 @@ const showroomSchema = new mongoose.Schema(
       default:null
       },
 
-      pincode:{
+    pincode:{
       type:String,
       required:true
-      },
+    },
 
-          vehicleType: {
+    vehicleType: {
       type: String,
       enum: ["car","bike","scooty","auto","other"],
-      
+    },
+
+    vehicleBrands: {
+      type: [String],
+      default: [],
+    },
+
+    vehicleBrandKeys: {
+      type: [String],
+      default: [],
+      index: true,
     },
 
     // 🔐 LOGIN FIELDS

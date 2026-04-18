@@ -25,10 +25,14 @@ const customerLeadSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    brand: {
-      type: String,
-      required: true,
-      trim: true,
+    brands: {
+      type: [String],
+      default: [],
+    },
+    brandKeys: {
+      type: [String],
+      default: [],
+      index: true,
     },
     city: {
       type: String,
@@ -71,6 +75,7 @@ customerLeadSchema.index({
 customerLeadSchema.index({
   cityKey: 1,
   vehicleType: 1,
+  brandKeys: 1,
   createdAt: -1,
 });
 

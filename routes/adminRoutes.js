@@ -29,6 +29,27 @@ function normalizeMobile(mobile) {
   return String(mobile || "").trim();
 }
 
+function normalizeText(value = "") {
+  return String(value || "").trim();
+}
+
+function normalizeBrandList(brands = []) {
+  const values = Array.isArray(brands) ? brands : [brands];
+  const seen = new Set();
+
+  return values
+    .map((item) => normalizeText(item))
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
 function buildAdminAudienceFilter(audience) {
   const normalizedAudience = String(audience || "all_users").toLowerCase();
 
@@ -597,6 +618,7 @@ router.post("/convert-lead/:id", async (req, res) => {
     const password = Math.random().toString(36).slice(-8);
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const normalizedVehicleBrands = normalizeBrandList(lead.vehicleBrands);
 
     const showroom = await Showroom.create({
 
@@ -613,7 +635,9 @@ router.post("/convert-lead/:id", async (req, res) => {
       username,
       password: hashedPassword,
 
-      vehicleType: lead.vehicleType   // 👈 🔥 MAIN FIX
+      vehicleType: lead.vehicleType,   // 👈 🔥 MAIN FIX
+      vehicleBrands: normalizedVehicleBrands,
+      vehicleBrandKeys: normalizedVehicleBrands.map((item) => item.toLowerCase())
 
     });
 
