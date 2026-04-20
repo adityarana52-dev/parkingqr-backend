@@ -372,6 +372,103 @@ router.patch("/:leadId/assign", protectShowroom, async (req, res) => {
   }
 });
 
+router.patch("/bulk-assign", protectShowroom, async (req, res) => {
+  try {
+    const leadIds = Array.isArray(req.body?.leadIds)
+      ? req.body.leadIds.map((item) => normalizeText(item)).filter(Boolean)
+      : [];
+    const rawAssignments = Array.isArray(req.body?.assignments) ? req.body.assignments : [];
+
+    if (!leadIds.length) {
+      return res.status(400).json({ message: "No leads provided for assignment" });
+    }
+
+    const assignments = [];
+    for (const item of rawAssignments) {
+      const salesPersonId = normalizeText(item?.salesPersonId);
+      const count = Number(item?.count);
+
+      if (!salesPersonId || !Number.isInteger(count) || count <= 0) {
+        continue;
+      }
+
+      assignments.push({ salesPersonId, count });
+    }
+
+    if (!assignments.length) {
+      return res.status(400).json({ message: "Please enter at least one valid assignment" });
+    }
+
+    const totalRequested = assignments.reduce((sum, item) => sum + item.count, 0);
+    if (totalRequested > leadIds.length) {
+      return res.status(400).json({
+        message: `You can assign only ${leadIds.length} lead${leadIds.length === 1 ? "" : "s"} in this request`,
+      });
+    }
+
+    const salesPeople = await SalesPerson.find({
+      _id: { $in: assignments.map((item) => item.salesPersonId) },
+      showroom: req.showroom.id,
+      isActive: true,
+    }).select("_id name mobile");
+
+    const salesPersonMap = new Map(
+      salesPeople.map((item) => [String(item._id), item])
+    );
+
+    for (const item of assignments) {
+      if (!salesPersonMap.has(item.salesPersonId)) {
+        return res.status(404).json({ message: "One or more active salespeople were not found" });
+      }
+    }
+
+    const leads = await CustomerLead.find({
+      _id: { $in: leadIds },
+      showroom: req.showroom.id,
+    }).sort({ createdAt: -1, updatedAt: -1 });
+
+    const orderedLeadMap = new Map(leads.map((item) => [String(item._id), item]));
+    const orderedUnassignedLeads = leadIds
+      .map((leadId) => orderedLeadMap.get(leadId))
+      .filter((item) => item && !item.assignedSalesPerson);
+
+    if (!orderedUnassignedLeads.length) {
+      return res.status(400).json({ message: "No unassigned leads available for bulk assignment" });
+    }
+
+    if (totalRequested > orderedUnassignedLeads.length) {
+      return res.status(400).json({
+        message: `Only ${orderedUnassignedLeads.length} unassigned lead${orderedUnassignedLeads.length === 1 ? " is" : "s are"} available right now`,
+      });
+    }
+
+    let cursor = 0;
+    const now = new Date();
+
+    for (const assignment of assignments) {
+      const salesPerson = salesPersonMap.get(assignment.salesPersonId);
+      const leadSlice = orderedUnassignedLeads.slice(cursor, cursor + assignment.count);
+      cursor += leadSlice.length;
+
+      for (const lead of leadSlice) {
+        lead.assignedSalesPerson = salesPerson._id;
+        lead.assignedSalesPersonName = salesPerson.name;
+        lead.assignedAt = now;
+        await lead.save();
+      }
+    }
+
+    return res.json({
+      message: "Leads assigned successfully",
+      assignedCount: totalRequested,
+      remainingCount: orderedUnassignedLeads.length - totalRequested,
+    });
+  } catch (error) {
+    console.log("Bulk assign customer leads error", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.patch("/:leadId/activity", protectShowroom, async (req, res) => {
   try {
     const leadId = normalizeText(req.params?.leadId);
@@ -453,3 +550,4 @@ router.patch("/:leadId/activity", protectShowroom, async (req, res) => {
 });
 
 module.exports = router;
+
