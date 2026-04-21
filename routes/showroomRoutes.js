@@ -1105,9 +1105,9 @@ createdAt:{ $gte:startOfMonth }
 
 console.log("Monthly offers:",count);
 
-if(count >= 2){
+if(count >= 10){
 return res.status(400).json({
-message:"You can send only 2 offers per month"
+message:"You can send only 10 offers per month"
 });
 }
 
@@ -1564,3 +1564,5 @@ router.get("/activated-qrs", protectShowroom, async (req, res) => {
 });
 
 module.exports = router;
+
+
