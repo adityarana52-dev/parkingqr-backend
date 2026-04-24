@@ -476,7 +476,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
                         const shortQrId = String(qr.qrId || "").slice(-5);
             doc.save();
             doc
-              .fontSize(8)
+              .fontSize(6)
               .fillColor("#222222")
               .rotate(-90, { origin: [qrX - 12, qrY + qrSize / 2] })
               .text(shortQrId, qrX - qrSize / 2 - 6, qrY + qrSize / 2, {
@@ -545,7 +545,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
                         const shortQrId = String(qr.qrId || "").slice(-5);
             doc.save();
             doc
-              .fontSize(8)
+              .fontSize(5)
               .fillColor("#222222")
               .rotate(-90, { origin: [qrX - 10, qrY + qrSize / 2] })
               .text(shortQrId, qrX - qrSize / 2 - 4, qrY + qrSize / 2, {
