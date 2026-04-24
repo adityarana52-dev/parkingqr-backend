@@ -473,13 +473,13 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
               width: qrSize,
             });
 
-            const shortQrId = String(qr.qrId || "").slice(-5);
+                        const shortQrId = String(qr.qrId || "").slice(-5);
             doc.save();
             doc
               .fontSize(8)
               .fillColor("#222222")
-              .rotate(-90, { origin: [qrX - 50, qrY + qrSize - 4] })
-              .text(shortQrId, qrX - qrSize + 16, qrY + qrSize - 4, {
+              .rotate(-90, { origin: [qrX - 12, qrY + qrSize / 2] })
+              .text(shortQrId, qrX - qrSize / 2 - 6, qrY + qrSize / 2, {
                 width: qrSize,
                 align: "center",
               });
@@ -1046,5 +1046,6 @@ router.patch(
 );
 
 module.exports = router;
+
 
 
