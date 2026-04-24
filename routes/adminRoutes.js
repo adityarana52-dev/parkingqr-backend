@@ -542,14 +542,17 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
               width: qrSize,
             });
 
-            const shortQrId = String(qr.qrId || "").slice(-5);
+                        const shortQrId = String(qr.qrId || "").slice(-5);
+            doc.save();
             doc
               .fontSize(8)
               .fillColor("#222222")
-              .text(shortQrId, x, qrY + qrSize + 4, {
-                width: cardWidth,
+              .rotate(-90, { origin: [qrX - 10, qrY + qrSize / 2] })
+              .text(shortQrId, qrX - qrSize / 2 - 4, qrY + qrSize / 2, {
+                width: qrSize,
                 align: "center",
               });
+            doc.restore();
 
             // POSITION
           x += cardWidth + gapX;
@@ -1046,6 +1049,7 @@ router.patch(
 );
 
 module.exports = router;
+
 
 
 
