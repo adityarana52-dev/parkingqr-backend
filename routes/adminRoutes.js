@@ -478,7 +478,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
             doc
               .fontSize(8)
               .fillColor("#222222")
-              .rotate(-90, { origin: [qrX - 10, qrY + qrSize - 4] })
+              .rotate(-90, { origin: [qrX - 50, qrY + qrSize - 4] })
               .text(shortQrId, qrX - qrSize + 16, qrY + qrSize - 4, {
                 width: qrSize,
                 align: "center",
