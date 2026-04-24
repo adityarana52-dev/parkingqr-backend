@@ -470,10 +470,19 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
           const qrY = y + 20;
 
           doc.image(qrBuffer, qrX, qrY, {
-            width: qrSize,
-          });
+              width: qrSize,
+            });
 
-          // POSITION
+            const shortQrId = String(qr.qrId || "").slice(-5);
+            doc
+              .fontSize(8)
+              .fillColor("#222222")
+              .text(shortQrId, x, qrY + qrSize + 4, {
+                width: cardWidth,
+                align: "center",
+              });
+
+            // POSITION
           x += cardWidth + gapX;
 
           if ((copy + 1) % 2 === 0) {
@@ -527,10 +536,19 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
           const qrY = y + qrOffsetY;
 
           doc.image(qrBuffer, qrX, qrY, {
-            width: qrSize,
-          });
+              width: qrSize,
+            });
 
-          // POSITION
+            const shortQrId = String(qr.qrId || "").slice(-5);
+            doc
+              .fontSize(8)
+              .fillColor("#222222")
+              .text(shortQrId, x, qrY + qrSize + 4, {
+                width: cardWidth,
+                align: "center",
+              });
+
+            // POSITION
           x += cardWidth + gapX;
 
           if ((copy + 1) % 2 === 0) {
@@ -1025,3 +1043,4 @@ router.patch(
 );
 
 module.exports = router;
+
