@@ -60,9 +60,89 @@ app.get("/scan/:qrId", async (req, res) => {
     }
 
     if (qr.qrStatus !== "activated" || !qr.assignedTo) {
-  return res.send("QR Not Activated Yet");
-}
+      return res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>CarbiQR</title>
+        <style>
+          * {
+            box-sizing: border-box;
+          }
 
+          body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          }
+
+          .status-card {
+            width: 100%;
+            max-width: 420px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
+            padding: 32px 24px;
+            text-align: center;
+          }
+
+          .status-badge {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 18px;
+            border-radius: 20px;
+            background: #fff7ed;
+            color: #ea580c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            font-weight: 800;
+          }
+
+          .status-brand {
+            margin: 0 0 8px;
+            font-size: 22px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+
+          .status-title {
+            margin: 0 0 10px;
+            font-size: 24px;
+            font-weight: 800;
+            color: #111827;
+          }
+
+          .status-text {
+            margin: 0;
+            font-size: 15px;
+            line-height: 24px;
+            color: #64748b;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="status-card">
+          <div class="status-badge">!</div>
+          <h1 class="status-brand">CarbiQR</h1>
+          <h2 class="status-title">QR Not Activated Yet</h2>
+          <p class="status-text">
+            This QR has not been activated yet. Please contact the showroom or vehicle owner for activation support.
+          </p>
+        </div>
+      </body>
+      </html>
+    `);
+    }
     const user = qr.assignedTo;
 
     let maskedNumber = "Not Available";
@@ -365,3 +445,5 @@ app.listen(PORT, () => {
   startExpiryCron();   // 🔥 add this
 });
 console.log("Razorpay Key:", process.env.RAZORPAY_KEY_ID);
+
+
