@@ -510,7 +510,7 @@ router.get("/download-showroom-qr/:showroomId", async (req, res) => {
       const templatePath = path.join(__dirname, "../assets/bike.png");
 
       const cardWidth = 170;   // 👈 yaha change karna
-      const cardHeight = 240;  // 👈 yaha change karna
+      const cardHeight = 180;  // 👈 yaha change karna
 
       const qrSize = 68;      // 👈 yaha change karna
       const qrOffsetY = 37;    // 👈 yaha change karna
