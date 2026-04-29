@@ -293,7 +293,7 @@ router.get("/offers", async (req, res) => {
       showroomId: { $in: showroomIds },
       createdAt: { $gte: last30Days },
     })
-      .populate("showroomId", "name city phone contactNumber vehicleType")
+      .populate("showroomId", "name city phone contactNumber vehicleType vehicleBrands vehicleBrandKeys")
       .sort({ createdAt: -1 });
 
     res.json(offers);
@@ -550,4 +550,5 @@ router.patch("/:leadId/activity", protectShowroom, async (req, res) => {
 });
 
 module.exports = router;
+
 

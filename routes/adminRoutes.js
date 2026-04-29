@@ -50,27 +50,55 @@ function normalizeBrandList(brands = []) {
     });
 }
 
-function buildAdminAudienceFilter(audience) {
+function buildAdminAudienceConfig(audience) {
   const normalizedAudience = String(audience || "all_users").toLowerCase();
 
   if (normalizedAudience === "active_subscribers") {
     return {
-      subscriptionActive: true,
-      subscriptionExpiresAt: { $gte: new Date() },
+      normalizedAudience,
+      entityType: "user",
+      filter: {
+        subscriptionActive: true,
+        subscriptionExpiresAt: { $gte: new Date() },
+      },
     };
   }
 
   if (normalizedAudience === "inactive_users") {
     return {
-      $or: [
-        { subscriptionActive: false },
-        { subscriptionExpiresAt: { $lt: new Date() } },
-        { subscriptionExpiresAt: null },
-      ],
+      normalizedAudience,
+      entityType: "user",
+      filter: {
+        $or: [
+          { subscriptionActive: false },
+          { subscriptionExpiresAt: { $lt: new Date() } },
+          { subscriptionExpiresAt: null },
+        ],
+      },
     };
   }
 
-  return {};
+  if (normalizedAudience === "all_showrooms") {
+    return {
+      normalizedAudience,
+      entityType: "showroom",
+      filter: {},
+    };
+  }
+
+  if (normalizedAudience === "active_showrooms") {
+    return {
+      normalizedAudience,
+      entityType: "showroom",
+      filter: { isActive: true },
+    };
+  }
+
+  return {
+    normalizedAudience: "all_users",
+    entityType: "user",
+    filter: {},
+  };
 }
 
 function getAudienceLabel(audience) {
@@ -79,6 +107,10 @@ function getAudienceLabel(audience) {
       return "Active Subscribers";
     case "inactive_users":
       return "Inactive Users";
+    case "all_showrooms":
+      return "All Showrooms";
+    case "active_showrooms":
+      return "Active Showrooms";
     case "all_users":
     default:
       return "All Users";
@@ -804,24 +836,32 @@ router.post("/notifications/send", protect, adminOnly, async (req, res) => {
     }
 
     if (
-      !["all_users", "active_subscribers", "inactive_users"].includes(
-        normalizedAudience
-      )
+      ![
+        "all_users",
+        "active_subscribers",
+        "inactive_users",
+        "all_showrooms",
+        "active_showrooms",
+      ].includes(normalizedAudience)
     ) {
       return res.status(400).json({ message: "Invalid audience selected" });
     }
 
-    const audienceFilter = buildAdminAudienceFilter(normalizedAudience);
+    const audienceConfig = buildAdminAudienceConfig(normalizedAudience);
+    const recipientModel =
+      audienceConfig.entityType === "showroom" ? Showroom : User;
 
-    const users = await User.find({
-      expoPushToken: { $ne: null },
-      ...audienceFilter,
-    }).select("_id expoPushToken mobile subscriptionActive subscriptionExpiresAt");
+    const recipients = await recipientModel
+      .find({
+        expoPushToken: { $ne: null },
+        ...audienceConfig.filter,
+      })
+      .select("_id expoPushToken mobile name isActive subscriptionActive subscriptionExpiresAt");
 
     const uniqueTokens = Array.from(
       new Set(
-        users
-          .map((user) => String(user.expoPushToken || "").trim())
+        recipients
+          .map((recipient) => String(recipient.expoPushToken || "").trim())
           .filter(Boolean)
       )
     );
@@ -831,6 +871,7 @@ router.post("/notifications/send", protect, adminOnly, async (req, res) => {
         sendPushNotification(token, normalizedTitle, normalizedMessage, {
           type: "ADMIN_BROADCAST",
           audience: normalizedAudience,
+          entityType: audienceConfig.entityType,
         })
       )
     );
@@ -851,7 +892,7 @@ router.post("/notifications/send", protect, adminOnly, async (req, res) => {
     });
 
     res.json({
-      message: `Notification queued for ${uniqueTokens.length} users`,
+      message: `Notification queued for ${uniqueTokens.length} recipients`,
       data: notification,
       recipientCount: uniqueTokens.length,
       deliveredCount,
@@ -863,7 +904,7 @@ router.post("/notifications/send", protect, adminOnly, async (req, res) => {
   }
 });
 
-router.get("/notifications/history", protect, adminOnly, async (req, res) => {
+router.get("/notifications/history" , protect, adminOnly, async (req, res) => {
   try {
     const history = await AdminNotification.find()
       .populate("createdBy", "mobile")
@@ -1049,6 +1090,8 @@ router.patch(
 );
 
 module.exports = router;
+
+
 
 
 

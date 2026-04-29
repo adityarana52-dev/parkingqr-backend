@@ -21,7 +21,13 @@ const adminNotificationSchema = new mongoose.Schema(
     },
     audience: {
       type: String,
-      enum: ["all_users", "active_subscribers", "inactive_users"],
+      enum: [
+        "all_users",
+        "active_subscribers",
+        "inactive_users",
+        "all_showrooms",
+        "active_showrooms",
+      ],
       default: "all_users",
       index: true,
     },
@@ -42,3 +48,4 @@ const adminNotificationSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("AdminNotification", adminNotificationSchema);
+
