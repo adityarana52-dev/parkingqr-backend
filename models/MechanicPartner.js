@@ -38,6 +38,19 @@ const mechanicPartnerSchema = new mongoose.Schema(
       min: 1,
       max: 25,
     },
+    vehicleTypes: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    vehicleTypeKeys: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+      },
+    ],
     location: {
       latitude: {
         type: Number,
@@ -63,6 +76,12 @@ const mechanicPartnerSchema = new mongoose.Schema(
   }
 );
 
-mechanicPartnerSchema.index({ city: 1, area: 1, isActive: 1, status: 1 });
+mechanicPartnerSchema.index({
+  city: 1,
+  area: 1,
+  isActive: 1,
+  status: 1,
+  vehicleTypeKeys: 1,
+});
 
 module.exports = mongoose.model("MechanicPartner", mechanicPartnerSchema);

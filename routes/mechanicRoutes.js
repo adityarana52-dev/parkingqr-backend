@@ -16,6 +16,23 @@ function normalizeText(value = "") {
   return String(value || "").trim().toLowerCase();
 }
 
+function normalizeVehicleTypeList(vehicleTypes = []) {
+  const values = Array.isArray(vehicleTypes) ? vehicleTypes : [vehicleTypes];
+  const seen = new Set();
+
+  return values
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
 function isValidMobile(value = "") {
   return /^[6-9]\d{9}$/.test(String(value || "").trim());
 }
@@ -46,6 +63,9 @@ function buildMechanicResponse(mechanic, distanceKm = null) {
     city: mechanic.city,
     area: mechanic.area,
     serviceRadiusKm: mechanic.serviceRadiusKm,
+    vehicleTypes: Array.isArray(mechanic.vehicleTypes)
+      ? mechanic.vehicleTypes
+      : [],
     distanceKm:
       typeof distanceKm === "number" && Number.isFinite(distanceKm)
         ? Number(distanceKm.toFixed(1))
@@ -55,18 +75,25 @@ function buildMechanicResponse(mechanic, distanceKm = null) {
 
 async function getNearbyMechanics({
   query = "",
+  vehicleType = "",
   latitude = null,
   longitude = null,
   limit = 10,
 }) {
   const normalizedQuery = normalizeText(query);
+  const normalizedVehicleType = normalizeText(vehicleType);
   const filter = { isActive: true, status: "approved" };
+
+  if (normalizedVehicleType) {
+    filter.vehicleTypeKeys = normalizedVehicleType;
+  }
 
   if (normalizedQuery) {
     filter.$or = [
       { city: { $regex: normalizedQuery, $options: "i" } },
       { area: { $regex: normalizedQuery, $options: "i" } },
       { name: { $regex: normalizedQuery, $options: "i" } },
+      { addressLine1: { $regex: normalizedQuery, $options: "i" } },
     ];
   }
 
@@ -134,20 +161,24 @@ router.post("/onboard", async (req, res) => {
       area,
       addressLine1,
       serviceRadiusKm,
+      vehicleTypes,
       latitude,
       longitude,
     } = req.body;
+    const normalizedVehicleTypes = normalizeVehicleTypeList(vehicleTypes);
 
     if (
       !name ||
       !isValidMobile(mobile) ||
       !city ||
       !area ||
+      !normalizedVehicleTypes.length ||
       !isValidCoordinate(latitude) ||
       !isValidCoordinate(longitude)
     ) {
       return res.status(400).json({
-        message: "Name, mobile, city, area and service pin are required.",
+        message:
+          "Name, mobile, city, area, vehicle types and service pin are required.",
       });
     }
 
@@ -170,6 +201,8 @@ router.post("/onboard", async (req, res) => {
       addressLine1: String(addressLine1 || "").trim(),
       serviceRadiusKm:
         Number(serviceRadiusKm) > 0 ? Number(serviceRadiusKm) : 5,
+      vehicleTypes: normalizedVehicleTypes,
+      vehicleTypeKeys: normalizedVehicleTypes.map((item) => item.toLowerCase()),
       location: {
         latitude: Number(latitude),
         longitude: Number(longitude),
@@ -193,10 +226,16 @@ router.post("/onboard", async (req, res) => {
 
 router.get("/search", async (req, res) => {
   try {
-    const { query = "", latitude = null, longitude = null } = req.query;
+    const {
+      query = "",
+      vehicleType = "",
+      latitude = null,
+      longitude = null,
+    } = req.query;
 
     const results = await getNearbyMechanics({
       query,
+      vehicleType,
       latitude,
       longitude,
       limit: 16,
@@ -292,6 +331,7 @@ router.post("/verify-contact-order", async (req, res) => {
 
     const nearestMechanics = await getNearbyMechanics({
       query,
+      vehicleType,
       latitude,
       longitude,
       limit: 8,
