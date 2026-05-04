@@ -60,7 +60,7 @@ async function getNearbyMechanics({
   limit = 10,
 }) {
   const normalizedQuery = normalizeText(query);
-  const filter = { isActive: true };
+  const filter = { isActive: true, status: "approved" };
 
   if (normalizedQuery) {
     filter.$or = [
@@ -174,12 +174,14 @@ router.post("/onboard", async (req, res) => {
         latitude: Number(latitude),
         longitude: Number(longitude),
       },
+      isActive: false,
+      status: "pending",
     });
 
     res.status(201).json({
       success: true,
       mechanicId: partner._id,
-      message: "Mechanic partner request submitted successfully.",
+      message: "Mechanic partner request submitted for admin approval.",
     });
   } catch (error) {
     console.error("MECHANIC ONBOARD ERROR:", error);

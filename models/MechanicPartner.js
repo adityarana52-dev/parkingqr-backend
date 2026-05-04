@@ -50,7 +50,12 @@ const mechanicPartnerSchema = new mongoose.Schema(
     },
     isActive: {
       type: Boolean,
-      default: true,
+      default: false,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
     },
   },
   {
@@ -58,6 +63,6 @@ const mechanicPartnerSchema = new mongoose.Schema(
   }
 );
 
-mechanicPartnerSchema.index({ city: 1, area: 1, isActive: 1 });
+mechanicPartnerSchema.index({ city: 1, area: 1, isActive: 1, status: 1 });
 
 module.exports = mongoose.model("MechanicPartner", mechanicPartnerSchema);
