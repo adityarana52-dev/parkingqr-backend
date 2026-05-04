@@ -30,6 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/showrooms", showroomRoutes);
+app.use("/api/mechanics", require("./routes/mechanicRoutes"));
 app.use("/api/qr", require("./routes/qrRoutes"));
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/service-notes", require("./routes/serviceNoteRoutes"));
