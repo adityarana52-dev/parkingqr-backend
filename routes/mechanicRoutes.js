@@ -33,6 +33,20 @@ function normalizeVehicleTypeList(vehicleTypes = []) {
     });
 }
 
+function getVehicleTypeSearchKeys(vehicleType = "") {
+  const normalized = normalizeText(vehicleType);
+
+  if (!normalized) {
+    return [];
+  }
+
+  if (normalized === "bike" || normalized === "scooty") {
+    return ["bike", "scooty"];
+  }
+
+  return [normalized];
+}
+
 function isValidMobile(value = "") {
   return /^[6-9]\d{9}$/.test(String(value || "").trim());
 }
@@ -83,9 +97,10 @@ async function getNearbyMechanics({
   const normalizedQuery = normalizeText(query);
   const normalizedVehicleType = normalizeText(vehicleType);
   const filter = { isActive: true, status: "approved" };
+  const vehicleTypeSearchKeys = getVehicleTypeSearchKeys(normalizedVehicleType);
 
-  if (normalizedVehicleType) {
-    filter.vehicleTypeKeys = { $in: [normalizedVehicleType] };
+  if (vehicleTypeSearchKeys.length) {
+    filter.vehicleTypeKeys = { $in: vehicleTypeSearchKeys };
   }
 
   const mechanics = await MechanicPartner.find(filter)
