@@ -88,18 +88,9 @@ async function getNearbyMechanics({
     filter.vehicleTypeKeys = { $in: [normalizedVehicleType] };
   }
 
-  if (normalizedQuery) {
-    filter.$or = [
-      { city: { $regex: normalizedQuery, $options: "i" } },
-      { area: { $regex: normalizedQuery, $options: "i" } },
-      { name: { $regex: normalizedQuery, $options: "i" } },
-      { addressLine1: { $regex: normalizedQuery, $options: "i" } },
-    ];
-  }
-
   const mechanics = await MechanicPartner.find(filter)
     .sort({ createdAt: -1 })
-    .limit(60);
+    .limit(100);
 
   const hasCoords =
     isValidCoordinate(latitude) && isValidCoordinate(longitude);
@@ -125,6 +116,24 @@ async function getNearbyMechanics({
       distanceKm,
     };
   });
+
+  if (normalizedQuery) {
+    enriched = enriched.filter(({ mechanic }) => {
+      const searchableText = [
+        mechanic.name,
+        mechanic.city,
+        mechanic.area,
+        mechanic.addressLine1,
+        mechanic.stateCode,
+      ]
+        .map((item) => normalizeText(item))
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(normalizedQuery);
+    });
+  }
 
   if (hasCoords) {
     enriched = enriched.filter(({ mechanic, distanceKm }) => {
