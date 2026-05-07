@@ -153,17 +153,23 @@ async function getNearbyMechanics({
 
   if (normalizedQuery) {
     enriched = enriched.filter(({ mechanic }) => {
-      const searchableText = [
-        mechanic.name,
-        mechanic.city,
-        mechanic.area,
-        mechanic.addressLine1,
-        mechanic.stateCode,
-      ]
-        .map((item) => normalizeText(item))
+      const name = normalizeText(mechanic.name);
+      const city = normalizeText(mechanic.city);
+      const area = normalizeText(mechanic.area);
+      const addressLine1 = normalizeText(mechanic.addressLine1);
+      const stateCode = normalizeText(mechanic.stateCode);
+
+      if (
+        city === normalizedQuery ||
+        area === normalizedQuery ||
+        name === normalizedQuery
+      ) {
+        return true;
+      }
+
+      const searchableText = [name, city, area, addressLine1, stateCode]
         .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+        .join(" ");
 
       return searchableText.includes(normalizedQuery);
     });
