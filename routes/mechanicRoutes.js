@@ -85,7 +85,7 @@ async function getNearbyMechanics({
   const filter = { isActive: true, status: "approved" };
 
   if (normalizedVehicleType) {
-    filter.vehicleTypeKeys = normalizedVehicleType;
+    filter.vehicleTypeKeys = { $in: [normalizedVehicleType] };
   }
 
   if (normalizedQuery) {
