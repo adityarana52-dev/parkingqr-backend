@@ -99,10 +99,6 @@ async function getNearbyMechanics({
   const filter = { isActive: true, status: "approved" };
   const vehicleTypeSearchKeys = getVehicleTypeSearchKeys(normalizedVehicleType);
 
-  if (vehicleTypeSearchKeys.length) {
-    filter.vehicleTypeKeys = { $in: vehicleTypeSearchKeys };
-  }
-
   const mechanics = await MechanicPartner.find(filter)
     .sort({ createdAt: -1 })
     .limit(100);
@@ -131,6 +127,29 @@ async function getNearbyMechanics({
       distanceKm,
     };
   });
+
+  if (vehicleTypeSearchKeys.length) {
+    enriched = enriched.filter(({ mechanic }) => {
+      const storedTypeKeys = Array.isArray(mechanic.vehicleTypeKeys)
+        ? mechanic.vehicleTypeKeys
+            .map((item) => normalizeText(item))
+            .filter(Boolean)
+        : [];
+
+      const storedTypesFromLabels = Array.isArray(mechanic.vehicleTypes)
+        ? mechanic.vehicleTypes
+            .map((item) => normalizeText(item))
+            .filter(Boolean)
+        : [];
+
+      const availableKeys = new Set([
+        ...storedTypeKeys,
+        ...storedTypesFromLabels,
+      ]);
+
+      return vehicleTypeSearchKeys.some((item) => availableKeys.has(item));
+    });
+  }
 
   if (normalizedQuery) {
     enriched = enriched.filter(({ mechanic }) => {
