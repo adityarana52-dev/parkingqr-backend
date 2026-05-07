@@ -98,13 +98,37 @@ async function getNearbyMechanics({
   const normalizedVehicleType = normalizeText(vehicleType);
   const filter = { isActive: true, status: "approved" };
   const vehicleTypeSearchKeys = getVehicleTypeSearchKeys(normalizedVehicleType);
+  const hasCoords =
+    isValidCoordinate(latitude) && isValidCoordinate(longitude);
+
+  console.log("[MECHANIC_SEARCH] incoming", {
+    query,
+    normalizedQuery,
+    vehicleType,
+    normalizedVehicleType,
+    vehicleTypeSearchKeys,
+    latitude,
+    longitude,
+    hasCoords,
+  });
 
   const mechanics = await MechanicPartner.find(filter)
     .sort({ createdAt: -1 })
     .limit(100);
 
-  const hasCoords =
-    isValidCoordinate(latitude) && isValidCoordinate(longitude);
+  console.log(
+    "[MECHANIC_SEARCH] approved_active_mechanics",
+    mechanics.map((mechanic) => ({
+      id: String(mechanic._id),
+      name: mechanic.name,
+      city: mechanic.city,
+      area: mechanic.area,
+      vehicleTypes: mechanic.vehicleTypes,
+      vehicleTypeKeys: mechanic.vehicleTypeKeys,
+      isActive: mechanic.isActive,
+      status: mechanic.status,
+    }))
+  );
 
   let enriched = mechanics.map((mechanic) => {
     let distanceKm = null;
@@ -149,6 +173,18 @@ async function getNearbyMechanics({
 
       return vehicleTypeSearchKeys.some((item) => availableKeys.has(item));
     });
+
+    console.log(
+      "[MECHANIC_SEARCH] after_vehicle_type_filter",
+      enriched.map(({ mechanic }) => ({
+        id: String(mechanic._id),
+        name: mechanic.name,
+        city: mechanic.city,
+        area: mechanic.area,
+        vehicleTypes: mechanic.vehicleTypes,
+        vehicleTypeKeys: mechanic.vehicleTypeKeys,
+      }))
+    );
   }
 
   if (normalizedQuery) {
@@ -173,6 +209,16 @@ async function getNearbyMechanics({
 
       return searchableText.includes(normalizedQuery);
     });
+
+    console.log(
+      "[MECHANIC_SEARCH] after_city_text_filter",
+      enriched.map(({ mechanic }) => ({
+        id: String(mechanic._id),
+        name: mechanic.name,
+        city: mechanic.city,
+        area: mechanic.area,
+      }))
+    );
   }
 
   if (hasCoords) {
@@ -183,6 +229,18 @@ async function getNearbyMechanics({
 
       return distanceKm <= Number(mechanic.serviceRadiusKm || 5);
     });
+
+    console.log(
+      "[MECHANIC_SEARCH] after_radius_filter",
+      enriched.map(({ mechanic, distanceKm }) => ({
+        id: String(mechanic._id),
+        name: mechanic.name,
+        city: mechanic.city,
+        area: mechanic.area,
+        distanceKm,
+        serviceRadiusKm: mechanic.serviceRadiusKm,
+      }))
+    );
 
     enriched.sort((a, b) => a.distanceKm - b.distanceKm);
   } else {
@@ -196,6 +254,17 @@ async function getNearbyMechanics({
       return String(a.mechanic.area).localeCompare(String(b.mechanic.area));
     });
   }
+
+  console.log(
+    "[MECHANIC_SEARCH] final_results",
+    enriched.slice(0, limit).map(({ mechanic, distanceKm }) => ({
+      id: String(mechanic._id),
+      name: mechanic.name,
+      city: mechanic.city,
+      area: mechanic.area,
+      distanceKm,
+    }))
+  );
 
   return enriched.slice(0, limit);
 }
