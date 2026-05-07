@@ -105,34 +105,9 @@ async function getNearbyMechanics({
   const hasCoords =
     isValidCoordinate(latitude) && isValidCoordinate(longitude);
 
-  console.log("[MECHANIC_SEARCH] incoming", {
-    query,
-    normalizedQuery,
-    vehicleType,
-    normalizedVehicleType,
-    vehicleTypeSearchKeys,
-    latitude,
-    longitude,
-    hasCoords,
-  });
-
   const mechanics = await MechanicPartner.find(filter)
     .sort({ createdAt: -1 })
     .limit(100);
-
-  console.log(
-    "[MECHANIC_SEARCH] approved_active_mechanics",
-    mechanics.map((mechanic) => ({
-      id: String(mechanic._id),
-      name: mechanic.name,
-      city: mechanic.city,
-      area: mechanic.area,
-      vehicleTypes: mechanic.vehicleTypes,
-      vehicleTypeKeys: mechanic.vehicleTypeKeys,
-      isActive: mechanic.isActive,
-      status: mechanic.status,
-    }))
-  );
 
   let enriched = mechanics.map((mechanic) => {
     let distanceKm = null;
@@ -177,18 +152,6 @@ async function getNearbyMechanics({
 
       return vehicleTypeSearchKeys.some((item) => availableKeys.has(item));
     });
-
-    console.log(
-      "[MECHANIC_SEARCH] after_vehicle_type_filter",
-      enriched.map(({ mechanic }) => ({
-        id: String(mechanic._id),
-        name: mechanic.name,
-        city: mechanic.city,
-        area: mechanic.area,
-        vehicleTypes: mechanic.vehicleTypes,
-        vehicleTypeKeys: mechanic.vehicleTypeKeys,
-      }))
-    );
   }
 
   if (normalizedQuery) {
@@ -213,16 +176,6 @@ async function getNearbyMechanics({
 
       return searchableText.includes(normalizedQuery);
     });
-
-    console.log(
-      "[MECHANIC_SEARCH] after_city_text_filter",
-      enriched.map(({ mechanic }) => ({
-        id: String(mechanic._id),
-        name: mechanic.name,
-        city: mechanic.city,
-        area: mechanic.area,
-      }))
-    );
   }
 
   if (hasCoords) {
@@ -233,18 +186,6 @@ async function getNearbyMechanics({
 
       return distanceKm <= Number(mechanic.serviceRadiusKm || 5);
     });
-
-    console.log(
-      "[MECHANIC_SEARCH] after_radius_filter",
-      enriched.map(({ mechanic, distanceKm }) => ({
-        id: String(mechanic._id),
-        name: mechanic.name,
-        city: mechanic.city,
-        area: mechanic.area,
-        distanceKm,
-        serviceRadiusKm: mechanic.serviceRadiusKm,
-      }))
-    );
 
     enriched.sort((a, b) => a.distanceKm - b.distanceKm);
   } else {
@@ -258,17 +199,6 @@ async function getNearbyMechanics({
       return String(a.mechanic.area).localeCompare(String(b.mechanic.area));
     });
   }
-
-  console.log(
-    "[MECHANIC_SEARCH] final_results",
-    enriched.slice(0, limit).map(({ mechanic, distanceKm }) => ({
-      id: String(mechanic._id),
-      name: mechanic.name,
-      city: mechanic.city,
-      area: mechanic.area,
-      distanceKm,
-    }))
-  );
 
   return enriched.slice(0, limit);
 }
@@ -396,6 +326,68 @@ router.post("/create-contact-order", async (req, res) => {
     console.error("MECHANIC CREATE ORDER ERROR:", error);
     res.status(500).json({
       message: "Unable to create mechanic contact order.",
+    });
+  }
+});
+
+router.post("/unlock-test", async (req, res) => {
+  try {
+    const {
+      query,
+      vehicleType,
+      latitude,
+      longitude,
+      selectedMechanicId,
+    } = req.body;
+
+    if (!vehicleType) {
+      return res.status(400).json({
+        message: "Vehicle type is required.",
+      });
+    }
+
+    const nearestMechanics = await getNearbyMechanics({
+      query,
+      vehicleType,
+      latitude,
+      longitude,
+      limit: 8,
+    });
+
+    let sortedMechanics = nearestMechanics;
+
+    if (selectedMechanicId) {
+      sortedMechanics = [
+        ...nearestMechanics.filter(
+          ({ mechanic }) => String(mechanic._id) === String(selectedMechanicId)
+        ),
+        ...nearestMechanics.filter(
+          ({ mechanic }) => String(mechanic._id) !== String(selectedMechanicId)
+        ),
+      ];
+    }
+
+    const topTwo = sortedMechanics.slice(0, 2);
+
+    res.json({
+      success: true,
+      dummy: true,
+      contacts: topTwo.map(({ mechanic, distanceKm }) => ({
+        mechanicId: mechanic._id,
+        name: mechanic.name,
+        mobile: mechanic.mobile,
+        city: mechanic.city,
+        area: mechanic.area,
+        distanceKm:
+          typeof distanceKm === "number" && Number.isFinite(distanceKm)
+            ? Number(distanceKm.toFixed(1))
+            : null,
+      })),
+    });
+  } catch (error) {
+    console.error("MECHANIC TEST UNLOCK ERROR:", error);
+    res.status(500).json({
+      message: "Unable to unlock mechanic contacts right now.",
     });
   }
 });
