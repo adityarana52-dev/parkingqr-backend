@@ -52,6 +52,10 @@ function isValidMobile(value = "") {
 }
 
 function isValidCoordinate(value) {
+  if (value === null || value === undefined || value === "") {
+    return false;
+  }
+
   return Number.isFinite(Number(value));
 }
 
