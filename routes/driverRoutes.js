@@ -20,7 +20,7 @@ const DEFAULT_FAST2SMS_SENDER_ID = "GEPSMS";
 const DEFAULT_FAST2SMS_ENTITY_ID = "1201177428135766247";
 const DEFAULT_FAST2SMS_TEMPLATE_ID = "1207177522097367395";
 const DEFAULT_FAST2SMS_OTP_TEMPLATE =
-  "{otp} is your OTP for carbiQR driver login. Do not share it with anyone.";
+  "{otp} is your OTP for carbiQr login. Do not share it with anyone. Regards - Grantham Enterprises";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -73,15 +73,26 @@ async function sendOtpSms(mobile, otp) {
     throw new Error("FAST2SMS API key is not configured.");
   }
 
-  const route = process.env.FAST2SMS_ROUTE || DEFAULT_FAST2SMS_ROUTE;
+  const route =
+    process.env.DRIVER_FAST2SMS_ROUTE ||
+    process.env.FAST2SMS_ROUTE ||
+    DEFAULT_FAST2SMS_ROUTE;
   const senderId =
-    process.env.FAST2SMS_SENDER_ID || DEFAULT_FAST2SMS_SENDER_ID;
+    process.env.DRIVER_FAST2SMS_SENDER_ID ||
+    process.env.FAST2SMS_SENDER_ID ||
+    DEFAULT_FAST2SMS_SENDER_ID;
   const entityId =
-    process.env.FAST2SMS_ENTITY_ID || DEFAULT_FAST2SMS_ENTITY_ID;
+    process.env.DRIVER_FAST2SMS_ENTITY_ID ||
+    process.env.FAST2SMS_ENTITY_ID ||
+    DEFAULT_FAST2SMS_ENTITY_ID;
   const templateId =
-    process.env.FAST2SMS_TEMPLATE_ID || DEFAULT_FAST2SMS_TEMPLATE_ID;
+    process.env.DRIVER_FAST2SMS_TEMPLATE_ID ||
+    process.env.FAST2SMS_TEMPLATE_ID ||
+    DEFAULT_FAST2SMS_TEMPLATE_ID;
   const otpTemplate =
-    process.env.FAST2SMS_OTP_MESSAGE || DEFAULT_FAST2SMS_OTP_TEMPLATE;
+    process.env.DRIVER_FAST2SMS_OTP_MESSAGE ||
+    process.env.FAST2SMS_OTP_MESSAGE ||
+    DEFAULT_FAST2SMS_OTP_TEMPLATE;
   const message = otpTemplate.replace("{otp}", otp);
 
   const payload = new URLSearchParams({
