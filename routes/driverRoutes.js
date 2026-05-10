@@ -642,6 +642,7 @@ router.post("/update-categories", protectDriver, async (req, res) => {
     const normalizedVehicleCategories = normalizeVehicleCategoryList(
       req.body?.vehicleCategories
     );
+    const parsedRadius = Number(req.body?.serviceRadiusKm);
 
     if (!normalizedVehicleCategories.length) {
       return res.status(400).json({
@@ -649,17 +650,25 @@ router.post("/update-categories", protectDriver, async (req, res) => {
       });
     }
 
+    if (!Number.isFinite(parsedRadius) || parsedRadius < 1 || parsedRadius > 30) {
+      return res.status(400).json({
+        message: "Service radius must be between 1 and 30 km.",
+      });
+    }
+
     req.driver.vehicleCategories = normalizedVehicleCategories;
     req.driver.vehicleCategoryKeys = normalizedVehicleCategories.map((item) =>
       item.toLowerCase()
     );
+    req.driver.serviceRadiusKm = parsedRadius;
     req.driver.lastSeenAt = new Date();
     await req.driver.save();
 
     res.json({
       success: true,
-      message: "Driver categories updated successfully.",
+      message: "Driver categories and radius updated successfully.",
       vehicleCategories: req.driver.vehicleCategories,
+      serviceRadiusKm: req.driver.serviceRadiusKm,
     });
   } catch (error) {
     console.log("Driver update categories error:", error);
