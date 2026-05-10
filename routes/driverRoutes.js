@@ -577,6 +577,38 @@ router.get("/me", protectDriver, async (req, res) => {
   });
 });
 
+router.post("/update-categories", protectDriver, async (req, res) => {
+  try {
+    const normalizedVehicleCategories = normalizeVehicleCategoryList(
+      req.body?.vehicleCategories
+    );
+
+    if (!normalizedVehicleCategories.length) {
+      return res.status(400).json({
+        message: "Please select at least one vehicle category.",
+      });
+    }
+
+    req.driver.vehicleCategories = normalizedVehicleCategories;
+    req.driver.vehicleCategoryKeys = normalizedVehicleCategories.map((item) =>
+      item.toLowerCase()
+    );
+    req.driver.lastSeenAt = new Date();
+    await req.driver.save();
+
+    res.json({
+      success: true,
+      message: "Driver categories updated successfully.",
+      vehicleCategories: req.driver.vehicleCategories,
+    });
+  } catch (error) {
+    console.log("Driver update categories error:", error);
+    res.status(500).json({
+      message: "Unable to update driver categories right now.",
+    });
+  }
+});
+
 router.post("/go-online", protectDriver, async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
