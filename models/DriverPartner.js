@@ -61,6 +61,28 @@ const driverPartnerSchema = new mongoose.Schema(
         required: true,
       },
     },
+    onlineStatus: {
+      type: Boolean,
+      default: false,
+    },
+    liveLocation: {
+      latitude: {
+        type: Number,
+        default: null,
+      },
+      longitude: {
+        type: Number,
+        default: null,
+      },
+      updatedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+    lastSeenAt: {
+      type: Date,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: false,
