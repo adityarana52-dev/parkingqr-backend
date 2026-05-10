@@ -22,6 +22,7 @@ const ShowroomClosureRequest = require("../models/ShowroomClosureRequest");
 const QrOrder = require("../models/QrOrder");
 const Support = require("../models/Support");
 const MechanicPartner = require("../models/MechanicPartner");
+const DriverPartner = require("../models/DriverPartner");
 const { normalizeStateCode } = require("../utils/stateCodeMap");
 
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
@@ -262,6 +263,9 @@ router.get("/dashboard", protect, adminOrEmployee, async (req, res) => {
     const pendingMechanicRequests = await MechanicPartner.countDocuments({
       status: "pending"
     });
+    const pendingDriverRequests = await DriverPartner.countDocuments({
+      status: "pending"
+    });
     const openSupportTickets = await Support.countDocuments({
       status: "open"
     });
@@ -335,6 +339,7 @@ router.get("/dashboard", protect, adminOrEmployee, async (req, res) => {
       pendingOrders,
       pendingBusinessLeads,
       pendingMechanicRequests,
+      pendingDriverRequests,
       openSupportTickets,
       pendingClosureRequests,
       pendingWithdrawals,
@@ -950,6 +955,52 @@ router.patch(
       });
     } catch (error) {
       console.log("Mechanic request update error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+router.get("/driver-requests", protect, adminOrEmployee, async (req, res) => {
+  try {
+    const requests = await DriverPartner.find().sort({ createdAt: -1 });
+    res.json(requests);
+  } catch (error) {
+    console.log("Driver request fetch error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.patch(
+  "/driver-requests/:id/status",
+  protect,
+  adminOrEmployee,
+  async (req, res) => {
+    try {
+      const status = String(req.body?.status || "").trim().toLowerCase();
+
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const request = await DriverPartner.findById(req.params.id);
+
+      if (!request) {
+        return res.status(404).json({ message: "Driver request not found" });
+      }
+
+      request.status = status;
+      request.isActive = status === "approved";
+      await request.save();
+
+      res.json({
+        message:
+          status === "approved"
+            ? "Driver request approved"
+            : "Driver request rejected",
+        data: request,
+      });
+    } catch (error) {
+      console.log("Driver request update error:", error);
       res.status(500).json({ message: "Server error" });
     }
   }

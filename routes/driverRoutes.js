@@ -1,11 +1,11 @@
 const express = require("express");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
-const MechanicPartner = require("../models/MechanicPartner");
-const MechanicContactUnlock = require("../models/MechanicContactUnlock");
+const DriverPartner = require("../models/DriverPartner");
+const DriverContactUnlock = require("../models/DriverContactUnlock");
 
 const router = express.Router();
-const MECHANIC_CONTACT_AMOUNT = 10;
+const DRIVER_CONTACT_AMOUNT = 10;
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -16,8 +16,10 @@ function normalizeText(value = "") {
   return String(value || "").trim().toLowerCase();
 }
 
-function normalizeVehicleTypeList(vehicleTypes = []) {
-  const values = Array.isArray(vehicleTypes) ? vehicleTypes : [vehicleTypes];
+function normalizeVehicleCategoryList(vehicleCategories = []) {
+  const values = Array.isArray(vehicleCategories)
+    ? vehicleCategories
+    : [vehicleCategories];
   const seen = new Set();
 
   return values
@@ -31,20 +33,6 @@ function normalizeVehicleTypeList(vehicleTypes = []) {
       seen.add(key);
       return true;
     });
-}
-
-function getVehicleTypeSearchKeys(vehicleType = "") {
-  const normalized = normalizeText(vehicleType);
-
-  if (!normalized) {
-    return [];
-  }
-
-  if (normalized === "bike" || normalized === "scooty") {
-    return ["bike", "scooty"];
-  }
-
-  return [normalized];
 }
 
 function isValidMobile(value = "") {
@@ -74,10 +62,10 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   return earthRadiusKm * c;
 }
 
-function buildRotationSeed(query = "", vehicleType = "") {
+function buildRotationSeed(query = "", vehicleCategory = "") {
   const now = new Date();
   const dateSeed = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}-${now.getUTCDate()}`;
-  return `${dateSeed}|${normalizeText(query)}|${normalizeText(vehicleType)}`;
+  return `${dateSeed}|${normalizeText(query)}|${normalizeText(vehicleCategory)}`;
 }
 
 function getRotationScore(value = "", seed = "") {
@@ -91,15 +79,15 @@ function getRotationScore(value = "", seed = "") {
   return hash;
 }
 
-function buildMechanicResponse(mechanic, distanceKm = null) {
+function buildDriverResponse(driver, distanceKm = null) {
   return {
-    _id: mechanic._id,
-    name: mechanic.name,
-    city: mechanic.city,
-    area: mechanic.area,
-    serviceRadiusKm: mechanic.serviceRadiusKm,
-    vehicleTypes: Array.isArray(mechanic.vehicleTypes)
-      ? mechanic.vehicleTypes
+    _id: driver._id,
+    name: driver.name,
+    city: driver.city,
+    area: driver.area,
+    serviceRadiusKm: driver.serviceRadiusKm,
+    vehicleCategories: Array.isArray(driver.vehicleCategories)
+      ? driver.vehicleCategories
       : [],
     distanceKm:
       typeof distanceKm === "number" && Number.isFinite(distanceKm)
@@ -108,77 +96,69 @@ function buildMechanicResponse(mechanic, distanceKm = null) {
   };
 }
 
-async function getNearbyMechanics({
+async function getNearbyDrivers({
   query = "",
-  vehicleType = "",
+  vehicleCategory = "",
   latitude = null,
   longitude = null,
   limit = 10,
 }) {
   const normalizedQuery = normalizeText(query);
-  const normalizedVehicleType = normalizeText(vehicleType);
-  const filter = { isActive: true, status: "approved" };
-  const vehicleTypeSearchKeys = getVehicleTypeSearchKeys(normalizedVehicleType);
+  const normalizedVehicleCategory = normalizeText(vehicleCategory);
   const hasCoords =
     isValidCoordinate(latitude) && isValidCoordinate(longitude);
-  const rotationSeed = buildRotationSeed(query, vehicleType);
+  const rotationSeed = buildRotationSeed(query, vehicleCategory);
 
-  const mechanics = await MechanicPartner.find(filter)
+  const drivers = await DriverPartner.find({
+    isActive: true,
+    status: "approved",
+  })
     .sort({ createdAt: -1 })
     .limit(100);
 
-  let enriched = mechanics.map((mechanic) => {
+  let enriched = drivers.map((driver) => {
     let distanceKm = null;
 
     if (
       hasCoords &&
-      isValidCoordinate(mechanic?.location?.latitude) &&
-      isValidCoordinate(mechanic?.location?.longitude)
+      isValidCoordinate(driver?.location?.latitude) &&
+      isValidCoordinate(driver?.location?.longitude)
     ) {
       distanceKm = calculateDistanceKm(
         Number(latitude),
         Number(longitude),
-        Number(mechanic.location.latitude),
-        Number(mechanic.location.longitude)
+        Number(driver.location.latitude),
+        Number(driver.location.longitude)
       );
     }
 
     return {
-      mechanic,
+      driver,
       distanceKm,
     };
   });
 
-  if (vehicleTypeSearchKeys.length) {
-    enriched = enriched.filter(({ mechanic }) => {
-      const storedTypeKeys = Array.isArray(mechanic.vehicleTypeKeys)
-        ? mechanic.vehicleTypeKeys
-            .map((item) => normalizeText(item))
-            .filter(Boolean)
+  if (normalizedVehicleCategory) {
+    enriched = enriched.filter(({ driver }) => {
+      const storedKeys = Array.isArray(driver.vehicleCategoryKeys)
+        ? driver.vehicleCategoryKeys.map((item) => normalizeText(item)).filter(Boolean)
+        : [];
+      const storedLabels = Array.isArray(driver.vehicleCategories)
+        ? driver.vehicleCategories.map((item) => normalizeText(item)).filter(Boolean)
         : [];
 
-      const storedTypesFromLabels = Array.isArray(mechanic.vehicleTypes)
-        ? mechanic.vehicleTypes
-            .map((item) => normalizeText(item))
-            .filter(Boolean)
-        : [];
-
-      const availableKeys = new Set([
-        ...storedTypeKeys,
-        ...storedTypesFromLabels,
-      ]);
-
-      return vehicleTypeSearchKeys.some((item) => availableKeys.has(item));
+      const availableKeys = new Set([...storedKeys, ...storedLabels]);
+      return availableKeys.has(normalizedVehicleCategory);
     });
   }
 
   if (normalizedQuery) {
-    enriched = enriched.filter(({ mechanic }) => {
-      const name = normalizeText(mechanic.name);
-      const city = normalizeText(mechanic.city);
-      const area = normalizeText(mechanic.area);
-      const addressLine1 = normalizeText(mechanic.addressLine1);
-      const stateCode = normalizeText(mechanic.stateCode);
+    enriched = enriched.filter(({ driver }) => {
+      const name = normalizeText(driver.name);
+      const city = normalizeText(driver.city);
+      const area = normalizeText(driver.area);
+      const addressLine1 = normalizeText(driver.addressLine1);
+      const stateCode = normalizeText(driver.stateCode);
 
       if (
         city === normalizedQuery ||
@@ -197,12 +177,12 @@ async function getNearbyMechanics({
   }
 
   if (hasCoords) {
-    enriched = enriched.filter(({ mechanic, distanceKm }) => {
+    enriched = enriched.filter(({ driver, distanceKm }) => {
       if (typeof distanceKm !== "number" || !Number.isFinite(distanceKm)) {
         return false;
       }
 
-      return distanceKm <= Number(mechanic.serviceRadiusKm || 5);
+      return distanceKm <= Number(driver.serviceRadiusKm || 5);
     });
 
     enriched.sort((a, b) => {
@@ -214,15 +194,15 @@ async function getNearbyMechanics({
       }
 
       return (
-        getRotationScore(a.mechanic._id, rotationSeed) -
-        getRotationScore(b.mechanic._id, rotationSeed)
+        getRotationScore(a.driver._id, rotationSeed) -
+        getRotationScore(b.driver._id, rotationSeed)
       );
     });
   } else {
     enriched.sort((a, b) => {
       return (
-        getRotationScore(a.mechanic._id, rotationSeed) -
-        getRotationScore(b.mechanic._id, rotationSeed)
+        getRotationScore(a.driver._id, rotationSeed) -
+        getRotationScore(b.driver._id, rotationSeed)
       );
     });
   }
@@ -240,38 +220,40 @@ router.post("/onboard", async (req, res) => {
       area,
       addressLine1,
       serviceRadiusKm,
-      vehicleTypes,
+      vehicleCategories,
       latitude,
       longitude,
     } = req.body;
-    const normalizedVehicleTypes = normalizeVehicleTypeList(vehicleTypes);
+
+    const normalizedVehicleCategories =
+      normalizeVehicleCategoryList(vehicleCategories);
 
     if (
       !name ||
       !isValidMobile(mobile) ||
       !city ||
       !area ||
-      !normalizedVehicleTypes.length ||
+      !normalizedVehicleCategories.length ||
       !isValidCoordinate(latitude) ||
       !isValidCoordinate(longitude)
     ) {
       return res.status(400).json({
         message:
-          "Name, mobile, city, area, vehicle types and service pin are required.",
+          "Name, mobile, city, area, vehicle categories and service pin are required.",
       });
     }
 
-    const existing = await MechanicPartner.findOne({
+    const existing = await DriverPartner.findOne({
       mobile: String(mobile).trim(),
     });
 
     if (existing) {
       return res.status(409).json({
-        message: "This mobile number is already onboarded as a mechanic partner.",
+        message: "This mobile number is already onboarded as a driver partner.",
       });
     }
 
-    const partner = await MechanicPartner.create({
+    const partner = await DriverPartner.create({
       name: String(name).trim(),
       mobile: String(mobile).trim(),
       stateCode: String(stateCode || "").trim().toUpperCase(),
@@ -280,8 +262,10 @@ router.post("/onboard", async (req, res) => {
       addressLine1: String(addressLine1 || "").trim(),
       serviceRadiusKm:
         Number(serviceRadiusKm) > 0 ? Number(serviceRadiusKm) : 5,
-      vehicleTypes: normalizedVehicleTypes,
-      vehicleTypeKeys: normalizedVehicleTypes.map((item) => item.toLowerCase()),
+      vehicleCategories: normalizedVehicleCategories,
+      vehicleCategoryKeys: normalizedVehicleCategories.map((item) =>
+        item.toLowerCase()
+      ),
       location: {
         latitude: Number(latitude),
         longitude: Number(longitude),
@@ -292,13 +276,13 @@ router.post("/onboard", async (req, res) => {
 
     res.status(201).json({
       success: true,
-      mechanicId: partner._id,
-      message: "Mechanic partner request submitted for admin approval.",
+      driverId: partner._id,
+      message: "Driver partner request submitted for admin approval.",
     });
   } catch (error) {
-    console.error("MECHANIC ONBOARD ERROR:", error);
+    console.error("DRIVER ONBOARD ERROR:", error);
     res.status(500).json({
-      message: "Mechanic onboarding failed.",
+      message: "Driver onboarding failed.",
     });
   }
 });
@@ -307,28 +291,28 @@ router.get("/search", async (req, res) => {
   try {
     const {
       query = "",
-      vehicleType = "",
+      vehicleCategory = "",
       latitude = null,
       longitude = null,
     } = req.query;
 
-    const results = await getNearbyMechanics({
+    const results = await getNearbyDrivers({
       query,
-      vehicleType,
+      vehicleCategory,
       latitude,
       longitude,
       limit: 16,
     });
 
     res.json({
-      results: results.map(({ mechanic, distanceKm }) =>
-        buildMechanicResponse(mechanic, distanceKm)
+      results: results.map(({ driver, distanceKm }) =>
+        buildDriverResponse(driver, distanceKm)
       ),
     });
   } catch (error) {
-    console.error("MECHANIC SEARCH ERROR:", error);
+    console.error("DRIVER SEARCH ERROR:", error);
     res.status(500).json({
-      message: "Unable to search mechanics right now.",
+      message: "Unable to search drivers right now.",
     });
   }
 });
@@ -336,9 +320,9 @@ router.get("/search", async (req, res) => {
 router.post("/create-contact-order", async (req, res) => {
   try {
     const options = {
-      amount: MECHANIC_CONTACT_AMOUNT * 100,
+      amount: DRIVER_CONTACT_AMOUNT * 100,
       currency: "INR",
-      receipt: `mechanic_${Date.now()}`,
+      receipt: `driver_${Date.now()}`,
     };
 
     const order = await razorpay.orders.create(options);
@@ -350,71 +334,9 @@ router.post("/create-contact-order", async (req, res) => {
       key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
-    console.error("MECHANIC CREATE ORDER ERROR:", error);
+    console.error("DRIVER CREATE ORDER ERROR:", error);
     res.status(500).json({
-      message: "Unable to create mechanic contact order.",
-    });
-  }
-});
-
-router.post("/unlock-test", async (req, res) => {
-  try {
-    const {
-      query,
-      vehicleType,
-      latitude,
-      longitude,
-      selectedMechanicId,
-    } = req.body;
-
-    if (!vehicleType) {
-      return res.status(400).json({
-        message: "Vehicle type is required.",
-      });
-    }
-
-    const nearestMechanics = await getNearbyMechanics({
-      query,
-      vehicleType,
-      latitude,
-      longitude,
-      limit: 8,
-    });
-
-    let sortedMechanics = nearestMechanics;
-
-    if (selectedMechanicId) {
-      sortedMechanics = [
-        ...nearestMechanics.filter(
-          ({ mechanic }) => String(mechanic._id) === String(selectedMechanicId)
-        ),
-        ...nearestMechanics.filter(
-          ({ mechanic }) => String(mechanic._id) !== String(selectedMechanicId)
-        ),
-      ];
-    }
-
-    const topTwo = sortedMechanics.slice(0, 2);
-
-    res.json({
-      success: true,
-      dummy: true,
-      contacts: topTwo.map(({ mechanic, distanceKm }) => ({
-        mechanicId: mechanic._id,
-        name: mechanic.name,
-        mobile: mechanic.mobile,
-        city: mechanic.city,
-        area: mechanic.area,
-        distanceKm:
-          typeof distanceKm === "number" && Number.isFinite(distanceKm)
-            ? Number(distanceKm.toFixed(1))
-            : null,
-      })),
-    });
-  } catch (error) {
-    console.error("MECHANIC TEST UNLOCK ERROR:", error);
-    res.status(500).json({
-      message: "Unable to unlock mechanic contacts right now.",
+      message: "Unable to create driver contact order.",
     });
   }
 });
@@ -427,12 +349,12 @@ router.post("/verify-contact-order", async (req, res) => {
       razorpay_signature,
       customerName,
       mobile,
-      vehicleType,
+      vehicleCategory,
       issue,
       query,
       latitude,
       longitude,
-      selectedMechanicId,
+      selectedDriverId,
     } = req.body;
 
     if (
@@ -441,20 +363,20 @@ router.post("/verify-contact-order", async (req, res) => {
       !razorpay_signature ||
       !customerName ||
       !isValidMobile(mobile) ||
-      !vehicleType
+      !vehicleCategory
     ) {
       return res.status(400).json({
         message: "Customer details and payment information are required.",
       });
     }
 
-    const duplicate = await MechanicContactUnlock.findOne({
+    const duplicate = await DriverContactUnlock.findOne({
       razorpay_payment_id,
     });
 
     if (duplicate) {
       return res.status(409).json({
-        message: "This mechanic contact unlock has already been processed.",
+        message: "This driver contact unlock has already been processed.",
       });
     }
 
@@ -470,55 +392,55 @@ router.post("/verify-contact-order", async (req, res) => {
       });
     }
 
-    const nearestMechanics = await getNearbyMechanics({
+    const nearestDrivers = await getNearbyDrivers({
       query,
-      vehicleType,
+      vehicleCategory,
       latitude,
       longitude,
       limit: 8,
     });
 
-    let sortedMechanics = nearestMechanics;
+    let sortedDrivers = nearestDrivers;
 
-    if (selectedMechanicId) {
-      sortedMechanics = [
-        ...nearestMechanics.filter(
-          ({ mechanic }) => String(mechanic._id) === String(selectedMechanicId)
+    if (selectedDriverId) {
+      sortedDrivers = [
+        ...nearestDrivers.filter(
+          ({ driver }) => String(driver._id) === String(selectedDriverId)
         ),
-        ...nearestMechanics.filter(
-          ({ mechanic }) => String(mechanic._id) !== String(selectedMechanicId)
+        ...nearestDrivers.filter(
+          ({ driver }) => String(driver._id) !== String(selectedDriverId)
         ),
       ];
     }
 
-    const topTwo = sortedMechanics.slice(0, 2);
+    const topTwo = sortedDrivers.slice(0, 2);
 
-    await MechanicContactUnlock.create({
+    await DriverContactUnlock.create({
       customerName: String(customerName).trim(),
       mobile: String(mobile).trim(),
-      vehicleType: String(vehicleType).trim(),
+      vehicleCategory: String(vehicleCategory).trim(),
       issue: String(issue || "").trim(),
       query: String(query || "").trim(),
       searchLocation: {
         latitude: isValidCoordinate(latitude) ? Number(latitude) : null,
         longitude: isValidCoordinate(longitude) ? Number(longitude) : null,
       },
-      selectedMechanicId: selectedMechanicId || null,
-      revealedMechanicIds: topTwo.map(({ mechanic }) => mechanic._id),
+      selectedDriverId: selectedDriverId || null,
+      revealedDriverIds: topTwo.map(({ driver }) => driver._id),
       razorpay_payment_id,
       razorpay_order_id,
-      amount: MECHANIC_CONTACT_AMOUNT,
+      amount: DRIVER_CONTACT_AMOUNT,
       status: "success",
     });
 
     res.json({
       success: true,
-      contacts: topTwo.map(({ mechanic, distanceKm }) => ({
-        mechanicId: mechanic._id,
-        name: mechanic.name,
-        mobile: mechanic.mobile,
-        city: mechanic.city,
-        area: mechanic.area,
+      contacts: topTwo.map(({ driver, distanceKm }) => ({
+        driverId: driver._id,
+        name: driver.name,
+        mobile: driver.mobile,
+        city: driver.city,
+        area: driver.area,
         distanceKm:
           typeof distanceKm === "number" && Number.isFinite(distanceKm)
             ? Number(distanceKm.toFixed(1))
@@ -526,9 +448,9 @@ router.post("/verify-contact-order", async (req, res) => {
       })),
     });
   } catch (error) {
-    console.error("MECHANIC VERIFY ORDER ERROR:", error);
+    console.error("DRIVER VERIFY ORDER ERROR:", error);
     res.status(500).json({
-      message: "Unable to verify mechanic contact payment.",
+      message: "Unable to verify driver contact payment.",
     });
   }
 });
