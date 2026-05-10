@@ -12,6 +12,16 @@ const driverContactUnlockSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    clientKey: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    requestIp: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     vehicleCategory: {
       type: String,
       required: true,
@@ -74,5 +84,7 @@ const driverContactUnlockSchema = new mongoose.Schema(
 );
 
 driverContactUnlockSchema.index({ razorpay_payment_id: 1 }, { unique: true });
+driverContactUnlockSchema.index({ createdAt: 1, clientKey: 1 });
+driverContactUnlockSchema.index({ createdAt: 1, requestIp: 1 });
 
 module.exports = mongoose.model("DriverContactUnlock", driverContactUnlockSchema);

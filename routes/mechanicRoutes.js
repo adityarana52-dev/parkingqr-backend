@@ -6,6 +6,7 @@ const MechanicContactUnlock = require("../models/MechanicContactUnlock");
 
 const router = express.Router();
 const MECHANIC_CONTACT_AMOUNT = 10;
+const DAILY_UNLOCK_LIMIT = 3;
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -106,6 +107,65 @@ function buildMechanicResponse(mechanic, distanceKm = null) {
         ? Number(distanceKm.toFixed(1))
         : null,
   };
+}
+
+function getRequestIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (Array.isArray(forwarded) && forwarded.length) {
+    return String(forwarded[0]).split(",")[0].trim();
+  }
+
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return forwarded.split(",")[0].trim();
+  }
+
+  return String(req.ip || req.socket?.remoteAddress || "").trim();
+}
+
+function getStartOfToday() {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now;
+}
+
+async function getMechanicUnlockUsage({ clientKey = "", requestIp = "" }) {
+  const startOfToday = getStartOfToday();
+  const normalizedClientKey = String(clientKey || "").trim();
+  const normalizedRequestIp = String(requestIp || "").trim();
+
+  const [clientKeyCount, ipCount] = await Promise.all([
+    normalizedClientKey
+      ? MechanicContactUnlock.countDocuments({
+          clientKey: normalizedClientKey,
+          status: "success",
+          createdAt: { $gte: startOfToday },
+        })
+      : Promise.resolve(0),
+    normalizedRequestIp
+      ? MechanicContactUnlock.countDocuments({
+          requestIp: normalizedRequestIp,
+          status: "success",
+          createdAt: { $gte: startOfToday },
+        })
+      : Promise.resolve(0),
+  ]);
+
+  return { clientKeyCount, ipCount };
+}
+
+async function ensureMechanicUnlockAllowed({ clientKey = "", requestIp = "" }) {
+  const usage = await getMechanicUnlockUsage({ clientKey, requestIp });
+
+  if (
+    usage.clientKeyCount >= DAILY_UNLOCK_LIMIT ||
+    usage.ipCount >= DAILY_UNLOCK_LIMIT
+  ) {
+    const error = new Error(
+      "Daily unlock limit reached. You can unlock contacts only 3 times in one day."
+    );
+    error.statusCode = 429;
+    throw error;
+  }
 }
 
 async function getNearbyMechanics({
@@ -335,6 +395,11 @@ router.get("/search", async (req, res) => {
 
 router.post("/create-contact-order", async (req, res) => {
   try {
+    const clientKey = String(req.body?.clientKey || "").trim();
+    const requestIp = getRequestIp(req);
+
+    await ensureMechanicUnlockAllowed({ clientKey, requestIp });
+
     const options = {
       amount: MECHANIC_CONTACT_AMOUNT * 100,
       currency: "INR",
@@ -350,6 +415,9 @@ router.post("/create-contact-order", async (req, res) => {
       key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     console.error("MECHANIC CREATE ORDER ERROR:", error);
     res.status(500).json({
       message: "Unable to create mechanic contact order.",
@@ -430,6 +498,7 @@ router.post("/verify-contact-order", async (req, res) => {
       vehicleType,
       issue,
       query,
+      clientKey,
       latitude,
       longitude,
       selectedMechanicId,
@@ -470,6 +539,9 @@ router.post("/verify-contact-order", async (req, res) => {
       });
     }
 
+    const requestIp = getRequestIp(req);
+    await ensureMechanicUnlockAllowed({ clientKey, requestIp });
+
     const nearestMechanics = await getNearbyMechanics({
       query,
       vehicleType,
@@ -496,6 +568,8 @@ router.post("/verify-contact-order", async (req, res) => {
     await MechanicContactUnlock.create({
       customerName: String(customerName).trim(),
       mobile: String(mobile).trim(),
+      clientKey: String(clientKey || "").trim(),
+      requestIp,
       vehicleType: String(vehicleType).trim(),
       issue: String(issue || "").trim(),
       query: String(query || "").trim(),
@@ -526,6 +600,9 @@ router.post("/verify-contact-order", async (req, res) => {
       })),
     });
   } catch (error) {
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     console.error("MECHANIC VERIFY ORDER ERROR:", error);
     res.status(500).json({
       message: "Unable to verify mechanic contact payment.",

@@ -10,6 +10,7 @@ const protectDriver = require("../middleware/driverAuthMiddleware");
 
 const router = express.Router();
 const DRIVER_CONTACT_AMOUNT = 10;
+const DAILY_UNLOCK_LIMIT = 3;
 const DRIVER_LIVE_FRESHNESS_MS = 30 * 60 * 1000;
 const OTP_LENGTH = 6;
 const OTP_TTL_MS = 5 * 60 * 1000;
@@ -175,6 +176,65 @@ function buildDriverResponse(driver, distanceKm = null) {
         ? Number(distanceKm.toFixed(1))
         : null,
   };
+}
+
+function getRequestIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (Array.isArray(forwarded) && forwarded.length) {
+    return String(forwarded[0]).split(",")[0].trim();
+  }
+
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return forwarded.split(",")[0].trim();
+  }
+
+  return String(req.ip || req.socket?.remoteAddress || "").trim();
+}
+
+function getStartOfToday() {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now;
+}
+
+async function getDriverUnlockUsage({ clientKey = "", requestIp = "" }) {
+  const startOfToday = getStartOfToday();
+  const normalizedClientKey = String(clientKey || "").trim();
+  const normalizedRequestIp = String(requestIp || "").trim();
+
+  const [clientKeyCount, ipCount] = await Promise.all([
+    normalizedClientKey
+      ? DriverContactUnlock.countDocuments({
+          clientKey: normalizedClientKey,
+          status: "success",
+          createdAt: { $gte: startOfToday },
+        })
+      : Promise.resolve(0),
+    normalizedRequestIp
+      ? DriverContactUnlock.countDocuments({
+          requestIp: normalizedRequestIp,
+          status: "success",
+          createdAt: { $gte: startOfToday },
+        })
+      : Promise.resolve(0),
+  ]);
+
+  return { clientKeyCount, ipCount };
+}
+
+async function ensureDriverUnlockAllowed({ clientKey = "", requestIp = "" }) {
+  const usage = await getDriverUnlockUsage({ clientKey, requestIp });
+
+  if (
+    usage.clientKeyCount >= DAILY_UNLOCK_LIMIT ||
+    usage.ipCount >= DAILY_UNLOCK_LIMIT
+  ) {
+    const error = new Error(
+      "Daily unlock limit reached. You can unlock contacts only 3 times in one day."
+    );
+    error.statusCode = 429;
+    throw error;
+  }
 }
 
 function getDriverSearchLocation(driver) {
@@ -691,6 +751,11 @@ router.post("/update-live-location", protectDriver, async (req, res) => {
 
 router.post("/create-contact-order", async (req, res) => {
   try {
+    const clientKey = String(req.body?.clientKey || "").trim();
+    const requestIp = getRequestIp(req);
+
+    await ensureDriverUnlockAllowed({ clientKey, requestIp });
+
     const options = {
       amount: DRIVER_CONTACT_AMOUNT * 100,
       currency: "INR",
@@ -706,6 +771,9 @@ router.post("/create-contact-order", async (req, res) => {
       key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     console.error("DRIVER CREATE ORDER ERROR:", error);
     res.status(500).json({
       message: "Unable to create driver contact order.",
@@ -724,6 +792,7 @@ router.post("/verify-contact-order", async (req, res) => {
       vehicleCategory,
       issue,
       query,
+      clientKey,
       latitude,
       longitude,
       selectedDriverId,
@@ -764,6 +833,9 @@ router.post("/verify-contact-order", async (req, res) => {
       });
     }
 
+    const requestIp = getRequestIp(req);
+    await ensureDriverUnlockAllowed({ clientKey, requestIp });
+
     const nearestDrivers = await getNearbyDrivers({
       query,
       vehicleCategory,
@@ -790,6 +862,8 @@ router.post("/verify-contact-order", async (req, res) => {
     await DriverContactUnlock.create({
       customerName: String(customerName).trim(),
       mobile: String(mobile).trim(),
+      clientKey: String(clientKey || "").trim(),
+      requestIp,
       vehicleCategory: String(vehicleCategory).trim(),
       issue: String(issue || "").trim(),
       query: String(query || "").trim(),
@@ -820,6 +894,9 @@ router.post("/verify-contact-order", async (req, res) => {
       })),
     });
   } catch (error) {
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     console.error("DRIVER VERIFY ORDER ERROR:", error);
     res.status(500).json({
       message: "Unable to verify driver contact payment.",
