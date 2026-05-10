@@ -27,6 +27,8 @@ const adminNotificationSchema = new mongoose.Schema(
         "inactive_users",
         "all_showrooms",
         "active_showrooms",
+        "all_drivers",
+        "active_drivers",
       ],
       default: "all_users",
       index: true,
@@ -48,4 +50,3 @@ const adminNotificationSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("AdminNotification", adminNotificationSchema);
-

@@ -12,6 +12,10 @@ const driverPartnerSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    expoPushToken: {
+      type: String,
+      default: null,
+    },
     stateCode: {
       type: String,
       trim: true,

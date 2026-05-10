@@ -637,6 +637,24 @@ router.get("/me", protectDriver, async (req, res) => {
   });
 });
 
+router.put("/save-push-token", protectDriver, async (req, res) => {
+  try {
+    const pushToken = String(req.body?.pushToken || "").trim();
+
+    if (!pushToken) {
+      return res.status(400).json({ message: "Push token required" });
+    }
+
+    req.driver.expoPushToken = pushToken;
+    await req.driver.save();
+
+    res.json({ success: true, message: "Driver push token saved" });
+  } catch (error) {
+    console.log("Driver save push token error:", error);
+    res.status(500).json({ message: "Unable to save driver push token" });
+  }
+});
+
 router.post("/update-categories", protectDriver, async (req, res) => {
   try {
     const normalizedVehicleCategories = normalizeVehicleCategoryList(

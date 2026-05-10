@@ -96,6 +96,22 @@ function buildAdminAudienceConfig(audience) {
     };
   }
 
+  if (normalizedAudience === "all_drivers") {
+    return {
+      normalizedAudience,
+      entityType: "driver",
+      filter: {},
+    };
+  }
+
+  if (normalizedAudience === "active_drivers") {
+    return {
+      normalizedAudience,
+      entityType: "driver",
+      filter: { isActive: true, status: "approved" },
+    };
+  }
+
   return {
     normalizedAudience: "all_users",
     entityType: "user",
@@ -113,6 +129,10 @@ function getAudienceLabel(audience) {
       return "All Showrooms";
     case "active_showrooms":
       return "Active Showrooms";
+    case "all_drivers":
+      return "All Drivers";
+    case "active_drivers":
+      return "Active Drivers";
     case "all_users":
     default:
       return "All Users";
@@ -852,6 +872,8 @@ router.post("/notifications/send", protect, adminOnly, async (req, res) => {
         "inactive_users",
         "all_showrooms",
         "active_showrooms",
+        "all_drivers",
+        "active_drivers",
       ].includes(normalizedAudience)
     ) {
       return res.status(400).json({ message: "Invalid audience selected" });
@@ -859,7 +881,11 @@ router.post("/notifications/send", protect, adminOnly, async (req, res) => {
 
     const audienceConfig = buildAdminAudienceConfig(normalizedAudience);
     const recipientModel =
-      audienceConfig.entityType === "showroom" ? Showroom : User;
+      audienceConfig.entityType === "showroom"
+        ? Showroom
+        : audienceConfig.entityType === "driver"
+        ? DriverPartner
+        : User;
 
     const recipients = await recipientModel
       .find({
